@@ -1,0 +1,11 @@
+{
+  "id": "word-to-md",
+  "name": "Word to MD",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Convert Word documents to Markdown with proper formatting, images, and properties.",
+  "author": "LuanZun",
+  "authorUrl": "https://github.com/luanzun",
+  "helpUrl": "https://github.com/luanzun/word-to-md/issues",
+  "isDesktopOnly": true
+}
