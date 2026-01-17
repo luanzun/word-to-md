@@ -1,0 +1,17 @@
+.word-to-md-modal {
+  padding: 10px;
+}
+
+.word-to-md-select {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.word-to-md-button-right {
+  float: right;
+}
+
+.word-to-md-button-right-margin {
+  float: right;
+  margin-right: 10px;
+}

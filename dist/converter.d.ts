@@ -8,7 +8,7 @@ export declare class WordConverter {
     fileHelper: FileHelper;
     constructor(plugin: WordToMdPlugin);
     showSingleFilePicker(): Promise<void>;
-    showFolderPicker(): Promise<void>;
+    showFolderPicker(): void;
     convertSingleFile(file: TFile | File): Promise<boolean>;
     convertFolder(folder: TFolder): Promise<void>;
     private convertBufferToMarkdown;

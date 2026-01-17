@@ -1,4 +1,4 @@
-import { Notice, TFile, TFolder, normalizePath, App } from 'obsidian';
+import { Notice, TFile, TFolder, normalizePath, Modal, App } from 'obsidian';
 import WordToMdPlugin from './main';
 import * as mammoth from 'mammoth';
 import AdmZip from 'adm-zip';
@@ -6,6 +6,23 @@ import { ImageProcessor } from './utils/imageProcessor';
 import { FileHelper } from './utils/fileHelper';
 import TurndownService from 'turndown';
 
+interface DocumentProperties {
+  title?: string;
+  author?: string;
+  created?: string;
+  modified?: string;
+  subject?: string;
+  keywords?: string;
+  pages?: number;
+  words?: number;
+  company?: string;
+  category?: string;
+}
+
+interface MammothImage {
+  read: () => Promise<ArrayBuffer>;
+  contentType: string;
+}
 
 export class WordConverter {
   plugin: WordToMdPlugin;
@@ -22,7 +39,7 @@ export class WordConverter {
   async showSingleFilePicker() {
     try {
       // Use Obsidian's requestFile API for better integration
-      const file = await (window as any).requestFile({
+      const file = await (window as unknown as { requestFile: (options: { extensions: string[]; title: string }) => Promise<File> }).requestFile({
         extensions: ['docx', 'doc'],
         title: 'Select Word Document'
       });
@@ -37,37 +54,32 @@ export class WordConverter {
   }
 
   // Show folder picker for batch conversion
-  async showFolderPicker() {
-    // Import Modal class from obsidian
-    const { Modal } = require('obsidian');
-    
+  showFolderPicker() {
     const folders = this.plugin.app.vault.getAllFolders();
-    const converter = this;
     const i18n = this.plugin.i18n;
-    
+
     // Create a custom modal for folder selection
     class FolderPickerModal extends Modal {
-      constructor(app: any) {
+      constructor(app: App, private wordConverter: WordConverter) {
         super(app);
       }
-      
+
       onOpen() {
         const { contentEl } = this;
-        contentEl.style.padding = '10px';
-        
+        contentEl.addClass('word-to-md-modal');
+
         contentEl.createEl('h3', { text: i18n.t('selectFolderTitle') });
-        
+
         // Create select element
         const select = contentEl.createEl('select');
-        select.style.width = '100%';
-        select.style.marginBottom = '10px';
-        
+        select.addClass('word-to-md-select');
+
         // Add default option
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
         defaultOption.textContent = i18n.t('selectFolderTitle');
         select.appendChild(defaultOption);
-        
+
         // Add all folders as options
         for (const folder of folders) {
           const option = document.createElement('option');
@@ -75,47 +87,46 @@ export class WordConverter {
           option.textContent = folder.path;
           select.appendChild(option);
         }
-        
+
         // Create convert button
         const convertButton = contentEl.createEl('button', { text: i18n.t('convertButton') });
-        convertButton.style.float = 'right';
-        
-        convertButton.addEventListener('click', async () => {
+        convertButton.addClass('word-to-md-button-right');
+
+        convertButton.addEventListener('click', (async () => {
           const selectedFolderPath = select.value;
           if (selectedFolderPath) {
             const selectedFolder = this.app.vault.getAbstractFileByPath(selectedFolderPath);
             if (selectedFolder && selectedFolder instanceof TFolder) {
-              await converter.convertFolder(selectedFolder);
+              await this.wordConverter.convertFolder(selectedFolder);
               this.close();
             }
           }
-        });
-        
+        }).bind(this));
+
         // Create cancel button
         const cancelButton = contentEl.createEl('button', { text: i18n.t('cancelButton') });
-        cancelButton.style.float = 'right';
-        cancelButton.style.marginRight = '10px';
-        
+        cancelButton.addClass('word-to-md-button-right-margin');
+
         cancelButton.addEventListener('click', () => {
           this.close();
         });
       }
-      
+
       onClose() {
         const { contentEl } = this;
         contentEl.empty();
       }
     }
-    
+
     // Open the modal
-    const modal = new FolderPickerModal(this.plugin.app);
+    const modal = new FolderPickerModal(this.plugin.app, this);
     modal.open();
   }
 
   // Convert a single Word file
   async convertSingleFile(file: TFile | File): Promise<boolean> {
     const i18n = this.plugin.i18n;
-    
+
     try {
       if (this.plugin.settings.showProgress) {
         new Notice(i18n.t('startingConversion', { fileName: file.name }));
@@ -125,14 +136,15 @@ export class WordConverter {
       let fileName: string;
       let fileParentPath: string;
 
-      if (file instanceof TFile) {
-        // Handle internal Obsidian file
-        buffer = await this.plugin.app.vault.readBinary(file);
+      if ('path' in file && 'vault' in this.plugin.app) {
+        // Handle internal Obsidian TFile
+        buffer = await this.plugin.app.vault.readBinary(file as TFile);
         fileName = file.name;
-        fileParentPath = file.parent ? file.parent.path : '';
+        const tfile = file as TFile;
+        fileParentPath = tfile.parent ? tfile.parent.path : '';
       } else {
-        // Handle external file
-        buffer = await file.arrayBuffer();
+        // Handle external File
+        buffer = await (file as File).arrayBuffer();
         fileName = file.name;
         fileParentPath = '';
       }
@@ -152,7 +164,7 @@ export class WordConverter {
       const result = await this.convertBufferToMarkdown(buffer, documentName, outputFolder);
 
       // Generate output file path
-      let outputFilePath = normalizePath(`${outputFolder}/${documentName}.md`);
+      const outputFilePath = normalizePath(`${outputFolder}/${documentName}.md`);
 
       // Check if file already exists and handle accordingly
       if (!this.plugin.settings.overwriteExisting && await this.fileHelper.fileExists(outputFilePath)) {
@@ -180,7 +192,7 @@ export class WordConverter {
   // Convert all Word files in a folder
   async convertFolder(folder: TFolder) {
     const i18n = this.plugin.i18n;
-    
+
     try {
       if (this.plugin.settings.showProgress) {
         new Notice(i18n.t('batchConversionStarted', { folderName: folder.name }));
@@ -205,7 +217,7 @@ export class WordConverter {
         if (this.plugin.settings.showProgress) {
           new Notice(i18n.t('convertingFile', { current: i + 1, total: totalFiles, fileName: file.name }));
         }
-        
+
         const result = await this.convertSingleFile(file);
         if (result) {
           successCount++;
@@ -214,7 +226,7 @@ export class WordConverter {
           const documentName = file.name.replace(/\.(docx|doc)$/, '');
           const outputFolder = this.plugin.settings.outputFolder || folder.path;
           const outputFilePath = normalizePath(`${outputFolder}/${documentName}.md`);
-          
+
           if (await this.fileHelper.fileExists(outputFilePath) && !this.plugin.settings.overwriteExisting) {
             skipCount++;
           } else {
@@ -224,12 +236,12 @@ export class WordConverter {
       }
 
       if (this.plugin.settings.showProgress) {
-        new Notice(i18n.t('batchConversionCompleted', { 
-          successCount: successCount, 
-          skipCount: skipCount, 
-          errorCount: errorCount, 
-          totalFiles: totalFiles, 
-          folderName: folder.name 
+        new Notice(i18n.t('batchConversionCompleted', {
+          successCount: successCount,
+          skipCount: skipCount,
+          errorCount: errorCount,
+          totalFiles: totalFiles,
+          folderName: folder.name
         }));
       }
     } catch (error) {
@@ -243,37 +255,36 @@ export class WordConverter {
   private async convertBufferToMarkdown(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
     try {
       console.log('Word to MD: Converting buffer to Markdown, buffer length:', buffer.byteLength);
-      
+
       // Get document properties
       const properties = await this.extractDocumentProperties(buffer);
-      
+
       // Local image counter for this document conversion
       let imageCounter = 0;
-      const converter = this;
 
       // Configure mammoth options
-      const options: any = {
+      const options = {
         // Add image conversion configuration
-        convertImage: mammoth.images.imgElement(async (image: any) => {
+        convertImage: mammoth.images.imgElement((async (image: MammothImage) => {
           try {
             // Increment image counter
             imageCounter++;
             console.log('Word to MD: Processing image', imageCounter);
-            
+
             // Read the image buffer
             const imageBuffer = await image.read();
-            
+
             // Save the image to the appropriate folder
-            const imagePath = await converter.imageProcessor.saveImage(
+            const imagePath = await this.imageProcessor.saveImage(
               imageBuffer,
               documentName,
               outputFolder,
               image.contentType,
               imageCounter
             );
-            
+
             console.log('Word to MD: Image saved to', imagePath);
-            
+
             // Return the image attributes as expected by mammoth
             return {
               src: imagePath,
@@ -286,17 +297,17 @@ export class WordConverter {
               alt: 'Error loading image'
             };
           }
-        })
-      };
+        }).bind(this))
+      } as unknown;
 
       // Convert to HTML first (mammoth doesn't have a convertToMarkdown method)
       console.log('Word to MD: Calling mammoth.convertToHtml...');
       const htmlResult = await mammoth.convertToHtml({
         arrayBuffer: buffer
       }, options);
-      
+
       console.log('Word to MD: HTML conversion successful, result length:', htmlResult.value.length);
-      
+
       // Generate YAML front matter with document properties
       let frontMatter = '';
       if (this.plugin.settings.includeProperties && properties) {
@@ -309,7 +320,7 @@ export class WordConverter {
         codeBlockStyle: 'fenced',
         emDelimiter: '*'
       });
-      
+
       // Use our custom table converter for better table handling
       turndownService.addRule('tables', {
         filter: 'table',
@@ -317,10 +328,10 @@ export class WordConverter {
           return this.convertHtmlTablesToMarkdown((node as HTMLElement).outerHTML);
         }
       });
-      
+
       // Convert HTML to Markdown
       const markdownContent = turndownService.turndown(htmlResult.value);
-      
+
       // Return Markdown content with front matter
       return frontMatter + markdownContent;
     } catch (error) {
@@ -329,22 +340,22 @@ export class WordConverter {
       throw error;
     }
   }
-  
+
   // Convert HTML tables to proper Markdown tables
   private convertHtmlTablesToMarkdown(html: string): string {
     // Create a temporary element to parse HTML
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
-    
+
     // Find all tables
     const tables = tempDiv.querySelectorAll('table');
-    
+
     tables.forEach(table => {
       let markdownTable = '\n';
-      
+
       // Get all rows
       const rows = table.querySelectorAll('tr');
-      
+
       // Process each row
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
@@ -353,31 +364,31 @@ export class WordConverter {
           // Get text content and trim whitespace
           return cell.textContent?.trim() || '';
         });
-        
+
         // Add row to markdown table
         markdownTable += `| ${cellContents.join(' | ')} |\n`;
-        
+
         // Add separator row after header
         if (i === 0) {
           const separators = cellContents.map(() => '---');
           markdownTable += `| ${separators.join(' | ')} |\n`;
         }
       }
-      
+
       // Replace HTML table with Markdown table
       table.outerHTML = markdownTable;
     });
-    
+
     return tempDiv.innerHTML;
   }
 
   // Extract document properties from Word file
-  private async extractDocumentProperties(buffer: ArrayBuffer): Promise<any> {
+  private extractDocumentProperties(buffer: ArrayBuffer): DocumentProperties {
     try {
       // Convert ArrayBuffer to Buffer for AdmZip
       const nodeBuffer = Buffer.from(buffer);
       const zip = new AdmZip(nodeBuffer);
-      const properties: any = {};
+      const properties: DocumentProperties = {};
 
       // Extract core properties from docProps/core.xml
       const coreXml = zip.readAsText('docProps/core.xml');
@@ -415,8 +426,8 @@ export class WordConverter {
   }
 
   // Parse core properties from XML
-  private parseCoreProperties(xml: string): any {
-    const properties: any = {};
+  private parseCoreProperties(xml: string): DocumentProperties {
+    const properties: DocumentProperties = {};
 
     // Extract title
     const titleMatch = xml.match(/<dc:title>(.*?)<\/dc:title>/s);
@@ -458,8 +469,8 @@ export class WordConverter {
   }
 
   // Parse app properties from XML
-  private parseAppProperties(xml: string): any {
-    const properties: any = {};
+  private parseAppProperties(xml: string): DocumentProperties {
+    const properties: DocumentProperties = {};
 
     // Extract total pages
     const pagesMatch = xml.match(/<Pages>(.*?)<\/Pages>/s);
@@ -501,7 +512,7 @@ export class WordConverter {
   }
 
   // Generate YAML front matter with document properties
-  private generateFrontMatter(properties: any): string {
+  private generateFrontMatter(properties: DocumentProperties): string {
     let frontMatter = '---\n';
     const tags: string[] = [];
 

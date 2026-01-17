@@ -1,4 +1,16 @@
 import { Translation } from './types';
+interface ObsidianApp {
+    language?: string;
+    locale?: string;
+    vault?: {
+        config?: {
+            language?: string;
+        };
+    };
+    workspace?: {
+        language?: string;
+    };
+}
 export declare const supportedLanguages: {
     en: Translation;
     zh: Translation;
@@ -13,7 +25,7 @@ export declare class I18n {
      * @param languageCode The language code to set
      * @param app Optional Obsidian app instance for auto-detection
      */
-    setLanguage(languageCode: string, app?: any): void;
+    setLanguage(languageCode: string, app?: ObsidianApp): void;
     /**
      * Get the current language code
      * @returns The current language code
@@ -26,5 +38,20 @@ export declare class I18n {
      * @returns The translated string
      */
     t(key: keyof Translation, params?: Record<string, string | number>): string;
+    /**
+     * Safely check if an object has a property
+     * @param obj The object to check
+     * @param prop The property name
+     * @returns True if the object has the property
+     */
+    private hasProperty;
+    /**
+     * Safely get a property from an object
+     * @param obj The object to get the property from
+     * @param prop The property name
+     * @returns The property value or undefined
+     */
+    private getProperty;
 }
+export {};
 //# sourceMappingURL=index.d.ts.map

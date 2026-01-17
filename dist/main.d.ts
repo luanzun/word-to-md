@@ -7,7 +7,7 @@ export default class WordToMdPlugin extends Plugin {
     converter: WordConverter;
     i18n: I18n;
     onload(): Promise<void>;
-    onunload(): Promise<void>;
+    onunload(): void;
     loadSettings(): Promise<void>;
     saveSettings(): Promise<void>;
 }

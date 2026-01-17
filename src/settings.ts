@@ -91,7 +91,7 @@ export class WordToMdSettingsTab extends PluginSettingTab {
           this.plugin.settings.showProgress = value;
           await this.plugin.saveSettings();
         }));
-    
+
     // Language setting
     new Setting(containerEl)
       .setName(i18n.t('languageName'))
@@ -101,11 +101,11 @@ export class WordToMdSettingsTab extends PluginSettingTab {
         .addOption('en', 'English')
         .addOption('zh', '中文')
         .setValue(this.plugin.settings.language)
-        .onChange(async (value) => {
+        .onChange(async (value: string) => {
           this.plugin.settings.language = value;
           await this.plugin.saveSettings();
           // Update i18n instance with new language, passing app for auto-detection
-          this.plugin.i18n.setLanguage(value, this.app);
+          this.plugin.i18n.setLanguage(value, this.plugin.app as unknown);
           // Refresh settings page to show translated text
           this.display();
         }));

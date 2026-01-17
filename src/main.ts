@@ -1,22 +1,22 @@
-import { Plugin, Menu, Notice, TFile, TFolder } from 'obsidian';
+import { Plugin, TFile, TFolder } from 'obsidian';
 import { WordToMdSettings, WordToMdSettingsTab, DEFAULT_SETTINGS } from './settings';
 import { WordConverter } from './converter';
 import { I18n } from './i18n';
 
 export default class WordToMdPlugin extends Plugin {
   settings: WordToMdSettings = DEFAULT_SETTINGS;
-  converter: WordConverter;
-  i18n: I18n;
+  converter!: WordConverter;
+  i18n!: I18n;
 
   async onload() {
     await this.loadSettings();
-    
+
     // Initialize i18n with the appropriate language
     this.i18n = new I18n(this.settings.language);
-    
+
     // Set the language, passing the app instance for auto-detection
-    this.i18n.setLanguage(this.settings.language, this.app);
-    
+    this.i18n.setLanguage(this.settings.language, this.app as unknown);
+
     this.converter = new WordConverter(this);
 
     // This adds a settings tab so the user can configure various aspects of the plugin
@@ -68,7 +68,7 @@ export default class WordToMdPlugin extends Plugin {
     console.log('Word to MD plugin loaded');
   }
 
-  async onunload() {
+  onunload() {
     console.log('Word to MD plugin unloaded');
   }
 
