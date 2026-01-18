@@ -1,16 +1,16 @@
 import { Translation } from './types';
 
 export const en: Translation = {
-  // Plugin name and description
-  pluginName: 'Word To MD',
-  pluginDescription: 'Convert word documents to markdown with proper formatting, images, and properties.',
+  // Plugin name - 插件名通常作为品牌，首字母大写
+  pluginName: 'Word to Markdown', 
+  pluginDescription: 'Convert word documents to Markdown with proper formatting, images, and properties.',
 
   // Settings page
-  settingsTitle: 'Settings',
+  // settingsTitle: 'Settings',
 
   // Output folder setting
   outputFolderName: 'Output folder name',
-  outputFolderDesc: 'Folder where converted markdown files will be saved. Leave empty to save in the same folder as the original file.',
+  outputFolderDesc: 'Folder where converted Markdown files will be saved. Leave empty to save in the same folder as the original file.',
   outputFolderPlaceholder: 'Enter folder path',
 
   // Image folder name setting
@@ -20,11 +20,11 @@ export const en: Translation = {
 
   // Include properties setting
   includePropertiesName: 'Include document properties',
-  includePropertiesDesc: 'Add WORD document properties as YAML front matter and tags.',
+  includePropertiesDesc: 'Add word document properties as YAML front matter and tags.',
 
   // Overwrite existing files setting
   overwriteExistingName: 'Overwrite existing files',
-  overwriteExistingDesc: 'Overwrite existing markdown files with the same name.',
+  overwriteExistingDesc: 'Overwrite existing Markdown files with the same name.',
 
   // Show progress setting
   showProgressName: 'Show progress',
@@ -35,27 +35,27 @@ export const en: Translation = {
   languageDesc: 'Select the language for the plugin. Choose "Auto" to use Obsidian\'s language setting.',
 
   // Commands
-  convertSingleCommand: 'Convert WORD document',
-  convertFolderCommand: 'Convert all WORD documents in folder',
+  convertSingleCommand: 'Convert word document',
+  convertFolderCommand: 'Convert all word documents in folder',
 
   // Context menu items
   convertToMarkdown: 'Convert to Markdown',
-  convertAllWordFiles: 'Convert all WORD documents to Markdown',
+  convertAllWordFiles: 'Convert all word files to Markdown',
 
   // Notifications
   startingConversion: 'Starting conversion of {fileName}...',
   conversionComplete: 'Successfully converted {fileName} to Markdown!',
   conversionFailed: 'Failed to convert {fileName}: {error}',
   fileExists: 'File {filePath} already exists. Skipping...',
-  noWordFilesFound: 'No WORD files (.docx, .doc) found in {folderName}',
+  noWordFilesFound: 'No word files (.docx, .doc) found in {folderName}',
   batchConversionStarted: 'Starting batch conversion in {folderName}...',
   batchConversionCompleted: 'Batch conversion completed: {successCount} succeeded, {skipCount} skipped, {errorCount} failed out of {totalFiles} total files in {folderName}',
   convertingFile: 'Converting {current}/{total}: {fileName}',
   batchConversionError: 'Error during batch conversion: {error}',
 
   // Folder picker
-  selectFolderTitle: 'Select folder to convert WORD documents',
+  selectFolderTitle: 'Select folder to convert word documents',
   convertButton: 'Convert',
   cancelButton: 'Cancel',
-  folderPickerNotImplemented: 'Folder picker not implemented yet, please use context menu on folder'
+  folderPickerNotImplemented: 'Folder picker not implemented yet; please use context menu on folder'
 };

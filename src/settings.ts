@@ -33,9 +33,9 @@ export class WordToMdSettingsTab extends PluginSettingTab {
 
     containerEl.empty();
 
-    new Setting(containerEl)
-      .setName(i18n.t('settingsTitle'))
-      .setHeading();
+    // new Setting(containerEl)
+      // .setName(i18n.t('settingsTitle'))
+      // .setHeading();
 
     // Output folder setting
     new Setting(containerEl)
