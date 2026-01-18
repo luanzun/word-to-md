@@ -14,10 +14,14 @@ export declare class WordConverter {
     private convertBufferToMarkdown;
     private convertWithMammoth;
     private convertWithPandoc;
+    private copyMediaFiles;
     private extractDocumentProperties;
     private parseCoreProperties;
     private parseAppProperties;
     private extractTextFromXml;
     private generateFrontMatter;
+    private extractImagesFromDocx;
+    private getContentType;
+    private updateImageReferences;
 }
 //# sourceMappingURL=converter.d.ts.map

@@ -59,7 +59,8 @@ export class ImageProcessor {
       'image/gif': 'gif',
       'image/bmp': 'bmp',
       'image/tiff': 'tiff',
-      'image/svg+xml': 'svg'
+      'image/svg+xml': 'svg',
+      'application/x-msmetafile': 'emf'
     };
 
     return contentTypeMap[contentType] || null;

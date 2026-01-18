@@ -247,7 +247,7 @@ export class WordToMdSettingsTab extends PluginSettingTab {
         try {
           const result = await this.execCommand('pandoc --version', 3000);
           if (result.stdout && result.stdout.includes('pandoc')) {
-            console.debug('Pandoc found via direct command execution');
+            //console.debug('Pandoc found via direct command execution');
             return 'pandoc';
           }
         } catch {
@@ -259,7 +259,7 @@ export class WordToMdSettingsTab extends PluginSettingTab {
           const result = await this.execCommand('where pandoc', 3000);
           if (result.stdout && result.stdout.trim()) {
             const detectedPath = result.stdout.trim().split('\n')[0].trim();
-            console.debug('Pandoc detected via where command:', detectedPath);
+            //console.debug('Pandoc detected via where command:', detectedPath);
             return detectedPath;
           }
         } catch {
@@ -270,7 +270,7 @@ export class WordToMdSettingsTab extends PluginSettingTab {
           const result = await this.execCommand('cmd /c where pandoc', 3000);
           if (result.stdout && result.stdout.trim()) {
             const detectedPath = result.stdout.trim().split('\n')[0].trim();
-            console.debug('Pandoc detected via cmd /c where command:', detectedPath);
+            //console.debug('Pandoc detected via cmd /c where command:', detectedPath);
             return detectedPath;
           }
         } catch {
@@ -281,12 +281,12 @@ export class WordToMdSettingsTab extends PluginSettingTab {
         const result = await this.execCommand('which pandoc', 5000);
         if (result.stdout && result.stdout.trim()) {
           const detectedPath = result.stdout.trim().split('\n')[0].trim();
-          console.debug('Pandoc detected via system PATH:', detectedPath);
+          //console.debug('Pandoc detected via system PATH:', detectedPath);
           return detectedPath;
         }
       }
     } catch {
-      console.debug('Could not find pandoc via system PATH, trying common paths...');
+      //console.debug('Could not find pandoc via system PATH, trying common paths...');
     }
 
     // Try to find pandoc in common paths
@@ -307,12 +307,12 @@ export class WordToMdSettingsTab extends PluginSettingTab {
   // Execute shell command
   private async execCommand(command: string, timeout: number = 10000): Promise<{ stdout: string; stderr: string }> {
     try {
-      console.debug('Word to MD: Executing command:', command);
+      //console.debug('Word to MD: Executing command:', command);
       const result = await execAsync(command, { timeout, maxBuffer: 1024 * 1024 });
-      console.debug('Word to MD: Command successful, stdout length:', result.stdout.length);
+      //console.debug('Word to MD: Command successful, stdout length:', result.stdout.length);
       return result;
     } catch (error) {
-      console.debug('Word to MD: Command failed:', command, 'Error:', String(error));
+      //console.debug('Word to MD: Command failed:', command, 'Error:', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }

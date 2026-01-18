@@ -64,12 +64,10 @@ export default class WordToMdPlugin extends Plugin {
         }
       })
     );
-
-    console.debug('Word to MD plugin loaded');
   }
 
   onunload() {
-    console.debug('Word to MD plugin unloaded');
+    // console.debug('Word to MD plugin unloaded');
   }
 
   async loadSettings() {

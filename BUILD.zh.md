@@ -86,6 +86,8 @@ npm run lint:fix
 1. **npm 命令未找到**：确保 Node.js 已正确安装并添加到您的 PATH 环境变量中
 2. **构建错误**：检查控制台输出的具体错误信息，通常与缺少依赖或 TypeScript 错误有关
 3. **插件无法在 Obsidian 中加载**：验证 `main.js` 和 `manifest.json` 文件是否正确放置在您的 Obsidian 插件目录中
+4. **ESLint 错误：未定义的变量**：最近的修复确保了 Pandoc 转换过程中正确的临时目录创建
+5. **图片格式错误**：插件现在完全支持 Word 文档中的 EMF 和 WMF 矢量图片格式
 
 ### 推荐的 IDE
 
