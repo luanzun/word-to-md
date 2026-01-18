@@ -32,8 +32,7 @@ export const en: Translation = {
 
   // Language setting
   languageName: 'Language',
-  languageDesc: 'Select the language for the plugin. Choose "Auto" to use Obsidian\'s language setting.',
-
+  languageDesc: 'Select the language for the plugin. Choose "auto" to use Obsidian default language setting.',
   // Commands
   convertSingleCommand: 'Convert word document',
   convertFolderCommand: 'Convert all word documents in folder',
