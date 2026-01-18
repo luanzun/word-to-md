@@ -1,4 +1,4 @@
-import { TFile, TFolder } from 'obsidian';
+import { TFolder } from 'obsidian';
 import WordToMdPlugin from './main';
 import { ImageProcessor } from './utils/imageProcessor';
 import { FileHelper } from './utils/fileHelper';
@@ -9,7 +9,7 @@ export declare class WordConverter {
     constructor(plugin: WordToMdPlugin);
     showSingleFilePicker(): Promise<void>;
     showFolderPicker(): void;
-    convertSingleFile(file: TFile | File): Promise<boolean>;
+    convertSingleFile(file: unknown): Promise<boolean>;
     convertFolder(folder: TFolder): Promise<void>;
     private convertBufferToMarkdown;
     private convertHtmlTablesToMarkdown;

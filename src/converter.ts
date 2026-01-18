@@ -124,27 +124,33 @@ export class WordConverter {
   }
 
   // Convert a single Word file
-  async convertSingleFile(file: TFile | File): Promise<boolean> {
+  async convertSingleFile(file: unknown): Promise<boolean> {
     const i18n = this.plugin.i18n;
+
+    // Check if file is a TFile or File object
+    if (!(file instanceof TFile || file instanceof File)) {
+      throw new Error('Invalid file type');
+    }
+
+    const originalFileName = file.name;
 
     try {
       if (this.plugin.settings.showProgress) {
-        new Notice(i18n.t('startingConversion', { fileName: file.name }));
+        new Notice(i18n.t('startingConversion', { fileName: originalFileName }));
       }
 
       let buffer: ArrayBuffer;
       let fileName: string;
       let fileParentPath: string;
 
-      if ('path' in file && 'vault' in this.plugin.app) {
+      if (file instanceof TFile) {
         // Handle internal Obsidian TFile
-        buffer = await this.plugin.app.vault.readBinary(file as TFile);
+        buffer = await this.plugin.app.vault.readBinary(file);
         fileName = file.name;
-        const tfile = file as TFile;
-        fileParentPath = tfile.parent ? tfile.parent.path : '';
+        fileParentPath = file.parent ? file.parent.path : '';
       } else {
         // Handle external File
-        buffer = await (file as File).arrayBuffer();
+        buffer = await file.arrayBuffer();
         fileName = file.name;
         fileParentPath = '';
       }
@@ -184,7 +190,7 @@ export class WordConverter {
     } catch (error) {
       console.error('Error converting file:', error);
       const errorMsg = error instanceof Error ? error.message : String(error);
-      new Notice(i18n.t('conversionFailed', { fileName: file.name, error: errorMsg }));
+      new Notice(i18n.t('conversionFailed', { fileName: originalFileName, error: errorMsg }));
       return false;
     }
   }
@@ -254,10 +260,8 @@ export class WordConverter {
   // Convert Word buffer to Markdown
   private async convertBufferToMarkdown(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
     try {
-      console.log('Word to MD: Converting buffer to Markdown, buffer length:', buffer.byteLength);
-
       // Get document properties
-      const properties = await this.extractDocumentProperties(buffer);
+      const properties = this.extractDocumentProperties(buffer);
 
       // Local image counter for this document conversion
       let imageCounter = 0;
@@ -269,8 +273,6 @@ export class WordConverter {
           try {
             // Increment image counter
             imageCounter++;
-            console.log('Word to MD: Processing image', imageCounter);
-
             // Read the image buffer
             const imageBuffer = await image.read();
 
@@ -283,7 +285,7 @@ export class WordConverter {
               imageCounter
             );
 
-            console.log('Word to MD: Image saved to', imagePath);
+            console.debug('Word to MD: Image saved to', imagePath);
 
             // Return the image attributes as expected by mammoth
             return {
@@ -301,12 +303,9 @@ export class WordConverter {
       } as unknown;
 
       // Convert to HTML first (mammoth doesn't have a convertToMarkdown method)
-      console.log('Word to MD: Calling mammoth.convertToHtml...');
       const htmlResult = await mammoth.convertToHtml({
         arrayBuffer: buffer
       }, options);
-
-      console.log('Word to MD: HTML conversion successful, result length:', htmlResult.value.length);
 
       // Generate YAML front matter with document properties
       let frontMatter = '';
@@ -325,7 +324,10 @@ export class WordConverter {
       turndownService.addRule('tables', {
         filter: 'table',
         replacement: (content, node) => {
-          return this.convertHtmlTablesToMarkdown((node as HTMLElement).outerHTML);
+          if (node instanceof HTMLElement) {
+            return this.convertHtmlTablesToMarkdown(node.outerHTML);
+          }
+          return content;
         }
       });
 
@@ -343,13 +345,15 @@ export class WordConverter {
 
   // Convert HTML tables to proper Markdown tables
   private convertHtmlTablesToMarkdown(html: string): string {
-    // Create a temporary element to parse HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+    // Create a DOMParser to safely parse HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
 
     // Find all tables
-    const tables = tempDiv.querySelectorAll('table');
+    const tables = doc.querySelectorAll('table');
+    let resultHtml = html;
 
+    // Process each table
     tables.forEach(table => {
       let markdownTable = '\n';
 
@@ -375,11 +379,11 @@ export class WordConverter {
         }
       }
 
-      // Replace HTML table with Markdown table
-      table.outerHTML = markdownTable;
+      // Replace the table's outerHTML with markdown table in the result
+      resultHtml = resultHtml.replace(table.outerHTML, markdownTable);
     });
 
-    return tempDiv.innerHTML;
+    return resultHtml;
   }
 
   // Extract document properties from Word file

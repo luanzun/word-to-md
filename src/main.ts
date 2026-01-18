@@ -27,7 +27,7 @@ export default class WordToMdPlugin extends Plugin {
       id: 'convert-word-document',
       name: this.i18n.t('convertSingleCommand'),
       callback: () => {
-        this.converter.showSingleFilePicker();
+        void this.converter.showSingleFilePicker();
       }
     });
 
@@ -65,11 +65,11 @@ export default class WordToMdPlugin extends Plugin {
       })
     );
 
-    console.log('Word to MD plugin loaded');
+    console.debug('Word to MD plugin loaded');
   }
 
   onunload() {
-    console.log('Word to MD plugin unloaded');
+    console.debug('Word to MD plugin unloaded');
   }
 
   async loadSettings() {

@@ -33,7 +33,9 @@ export class WordToMdSettingsTab extends PluginSettingTab {
 
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: i18n.t('settingsTitle') });
+    new Setting(containerEl)
+      .setName(i18n.t('settingsTitle'))
+      .setHeading();
 
     // Output folder setting
     new Setting(containerEl)
@@ -97,7 +99,7 @@ export class WordToMdSettingsTab extends PluginSettingTab {
       .setName(i18n.t('languageName'))
       .setDesc(i18n.t('languageDesc'))
       .addDropdown((dropdown) => dropdown
-        .addOption('auto', 'Auto (Use Obsidian language)')
+        .addOption('auto', 'Auto (use Obsidian language)')
         .addOption('en', 'English')
         .addOption('zh', '中文')
         .setValue(this.plugin.settings.language)
