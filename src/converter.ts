@@ -5,6 +5,14 @@ import AdmZip from 'adm-zip';
 import { ImageProcessor } from './utils/imageProcessor';
 import { FileHelper } from './utils/fileHelper';
 import TurndownService from 'turndown';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFileSync, unlinkSync, existsSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import * as fs from 'fs';
+
+const execAsync = promisify(exec);
 
 interface DocumentProperties {
   title?: string;
@@ -92,16 +100,18 @@ export class WordConverter {
         const convertButton = contentEl.createEl('button', { text: i18n.t('convertButton') });
         convertButton.addClass('word-to-md-button-right');
 
-        convertButton.addEventListener('click', (async () => {
-          const selectedFolderPath = select.value;
-          if (selectedFolderPath) {
-            const selectedFolder = this.app.vault.getAbstractFileByPath(selectedFolderPath);
-            if (selectedFolder && selectedFolder instanceof TFolder) {
-              await this.wordConverter.convertFolder(selectedFolder);
-              this.close();
+        convertButton.addEventListener('click', () => {
+          void (async () => {
+            const selectedFolderPath = select.value;
+            if (selectedFolderPath) {
+              const selectedFolder = this.app.vault.getAbstractFileByPath(selectedFolderPath);
+              if (selectedFolder && selectedFolder instanceof TFolder) {
+                await this.wordConverter.convertFolder(selectedFolder);
+                this.close();
+              }
             }
-          }
-        }).bind(this));
+          })();
+        });
 
         // Create cancel button
         const cancelButton = contentEl.createEl('button', { text: i18n.t('cancelButton') });
@@ -260,104 +270,177 @@ export class WordConverter {
   // Convert Word buffer to Markdown
   private async convertBufferToMarkdown(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
     try {
-      // Get document properties
-      const properties = this.extractDocumentProperties(buffer);
-
-      // Local image counter for this document conversion
-      let imageCounter = 0;
-
-      // Configure mammoth options
-      const options = {
-        // Add image conversion configuration
-        convertImage: mammoth.images.imgElement((async (image: MammothImage) => {
-          try {
-            // Increment image counter
-            imageCounter++;
-            // Read the image buffer
-            const imageBuffer = await image.read();
-
-            // Save the image to the appropriate folder
-            const imagePath = await this.imageProcessor.saveImage(
-              imageBuffer,
-              documentName,
-              outputFolder,
-              image.contentType,
-              imageCounter
-            );
-
-            console.debug('Word to MD: Image saved to', imagePath);
-
-            // Return the image attributes as expected by mammoth
-            return {
-              src: imagePath,
-              alt: `Image ${imageCounter}`
-            };
-          } catch (error) {
-            console.error('Word to MD: Error processing image:', error);
-            return {
-              src: '#',
-              alt: 'Error loading image'
-            };
-          }
-        }).bind(this))
-      } as unknown;
-
-      // Convert to HTML first (mammoth doesn't have a convertToMarkdown method)
-      const htmlResult = await mammoth.convertToHtml({
-        arrayBuffer: buffer
-      }, options);
-
-      // Generate YAML front matter with document properties
-      let frontMatter = '';
-      if (this.plugin.settings.includeProperties && properties) {
-        frontMatter = this.generateFrontMatter(properties);
+      // Check which converter to use
+      if (this.plugin.settings.converterType === 'pandoc') {
+        return await this.convertWithPandoc(buffer, documentName, outputFolder);
+      } else {
+        return await this.convertWithMammoth(buffer, documentName, outputFolder);
       }
-
-      // Initialize Turndown service for HTML to Markdown conversion
-      const turndownService = new TurndownService({
-        headingStyle: 'atx',
-        codeBlockStyle: 'fenced',
-        emDelimiter: '*'
-      });
-
-      // Use our custom table converter for better table handling
-      turndownService.addRule('tables', {
-        filter: 'table',
-        replacement: (content, node) => {
-          if (node instanceof HTMLElement) {
-            let markdownTable = '\n';
-            const rows = node.querySelectorAll('tr');
-
-            rows.forEach((row, rowIndex) => {
-              const cells = row.querySelectorAll('th, td');
-              const cellContents = Array.from(cells).map(cell =>
-                cell.textContent?.trim() || ''
-              );
-
-              markdownTable += `| ${cellContents.join(' | ')} |\n`;
-
-              // Add separator row after header
-              if (rowIndex === 0) {
-                const separators = cellContents.map(() => '---');
-                markdownTable += `| ${separators.join(' | ')} |\n`;
-              }
-            });
-
-            return markdownTable;
-          }
-          return content;
-        }
-      });
-
-      // Convert HTML to Markdown
-      const markdownContent = turndownService.turndown(htmlResult.value);
-
-      // Return Markdown content with front matter
-      return frontMatter + markdownContent;
     } catch (error) {
       console.error('Error converting buffer to Markdown:', error);
       console.error('Error details:', error instanceof Error ? error.stack : String(error));
       throw error;
+    }
+  }
+
+  // Convert using Mammoth.js + Turndown
+  private async convertWithMammoth(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
+    // Get document properties
+    const properties = this.extractDocumentProperties(buffer);
+
+    // Local image counter for this document conversion
+    let imageCounter = 0;
+
+    // Configure mammoth options
+    const options = {
+      // Add image conversion configuration
+      convertImage: mammoth.images.imgElement((async (image: MammothImage) => {
+        try {
+          // Increment image counter
+          imageCounter++;
+          // Read the image buffer
+          const imageBuffer = await image.read();
+
+          // Save the image to the appropriate folder
+          const imagePath = await this.imageProcessor.saveImage(
+            imageBuffer,
+            documentName,
+            outputFolder,
+            image.contentType,
+            imageCounter
+          );
+
+          console.debug('Word to MD: Image saved to', imagePath);
+
+          // Return the image attributes as expected by mammoth
+          return {
+            src: imagePath,
+            alt: `Image ${imageCounter}`
+          };
+        } catch (error) {
+          console.error('Word to MD: Error processing image:', error);
+          return {
+            src: '#',
+            alt: 'Error loading image'
+          };
+        }
+      }).bind(this))
+    } as unknown;
+
+      // Convert to HTML first (mammoth doesn't have a convertToMarkdown method)
+      const htmlResult = await mammoth.convertToHtml(
+        { arrayBuffer: buffer },
+        options as Record<string, unknown>
+      );
+
+    // Generate YAML front matter with document properties
+    let frontMatter = '';
+    if (this.plugin.settings.includeProperties && properties) {
+      frontMatter = this.generateFrontMatter(properties);
+    }
+
+    // Initialize Turndown service for HTML to Markdown conversion
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+      emDelimiter: '*'
+    });
+
+    // Use our custom table converter for better table handling
+    turndownService.addRule('tables', {
+      filter: 'table',
+      replacement: (content, node) => {
+        if (node instanceof HTMLElement) {
+          let markdownTable = '\n';
+          const rows = node.querySelectorAll('tr');
+
+          rows.forEach((row, rowIndex) => {
+            const cells = row.querySelectorAll('th, td');
+            const cellContents = Array.from(cells).map(cell =>
+              cell.textContent?.trim() || ''
+            );
+
+            markdownTable += `| ${cellContents.join(' | ')} |\n`;
+
+            // Add separator row after header
+            if (rowIndex === 0) {
+              const separators = cellContents.map(() => '---');
+              markdownTable += `| ${separators.join(' | ')} |\n`;
+            }
+          });
+
+          return markdownTable;
+        }
+        return content;
+      }
+    });
+
+    // Convert HTML to Markdown
+    const markdownContent = turndownService.turndown(htmlResult.value);
+
+    // Return Markdown content with front matter
+    return frontMatter + markdownContent;
+  }
+
+  // Convert using Pandoc
+  private async convertWithPandoc(buffer: ArrayBuffer, documentName: string, _outputFolder: string): Promise<string> {
+    const i18n = this.plugin.i18n;
+
+    // Check if pandoc path is configured
+    const pandocPath = this.plugin.settings.pandocPath || 'pandoc';
+    if (!pandocPath) {
+      throw new Error(i18n.t('pandocPathNotConfigured'));
+    }
+
+    // Create temporary file for the Word document
+    const tempDir = tmpdir();
+    const tempInputPath = join(tempDir, `${documentName}.docx`);
+    const tempOutputPath = join(tempDir, `${documentName}.md`);
+
+    try {
+      // Write buffer to temporary file
+      const nodeBuffer = Buffer.from(buffer);
+      writeFileSync(tempInputPath, nodeBuffer);
+
+      // Prepare pandoc command
+      const pandocCommand = `"${pandocPath}" "${tempInputPath}" -t markdown -o "${tempOutputPath}" --wrap=preserve`;
+
+      // Execute pandoc
+      const { stdout, stderr } = await execAsync(pandocCommand, {
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+      });
+
+      // stdout is not used but kept for debugging
+      console.debug('Pandoc output:', stdout);
+
+      if (stderr && stderr.includes('Error')) {
+        throw new Error(`Pandoc error: ${stderr}`);
+      }
+
+      // Read the converted markdown
+      let markdownContent = await fs.promises.readFile(tempOutputPath, 'utf-8');
+
+      // Add document properties if enabled
+      if (this.plugin.settings.includeProperties) {
+        const properties = this.extractDocumentProperties(buffer);
+        const frontMatter = this.generateFrontMatter(properties);
+        markdownContent = frontMatter + markdownContent;
+      }
+
+      return markdownContent;
+    } finally {
+      // Clean up temporary files
+      try {
+        if (existsSync(tempInputPath)) {
+          unlinkSync(tempInputPath);
+        }
+        if (existsSync(tempOutputPath)) {
+          unlinkSync(tempOutputPath);
+        }
+      } catch (error) {
+        console.warn('Warning: Could not clean up temporary files:', error);
+      }
     }
   }
 

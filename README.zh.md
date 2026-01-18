@@ -2,7 +2,40 @@
 
 一个简单而强大的 Obsidian 插件，用于将 Word 文档（.docx, .doc）转换为 Markdown 格式，保留适当的格式、图片和文档属性。
 
-中文文档 | **[English Documentation](README.md)**
+## 项目徽章
+
+![GitHub 发布](https://img.shields.io/github/v/release/luanzun/word-to-md)
+![许可证](https://img.shields.io/badge/license-MIT-blue)
+![平台](https://img.shields.io/badge/platform-Obsidian-blue)
+
+## 文档链接
+
+中文文档 | **English Documentation**
+- [中文文档 (README)](README.zh.md) | [English Documentation (README)](README.md)
+- [构建指南 (BUILD)](BUILD.zh.md) | [Build Guide (BUILD)](BUILD.md)
+
+## 功能清单
+
+- [x] 单文件转换
+- [x] 批量转换
+- [x] 上下文菜单集成
+- [x] 命令面板支持
+- [x] 标题转换（H1-H6）
+- [x] 文本格式（粗体、斜体、下划线、删除线）
+- [x] 有序和无序列表
+- [x] 表格转换
+- [x] 超链接保留
+- [x] 图片提取和存储
+- [x] YAML 前置元数据（文档属性）
+- [x] 自动标签生成
+- [x] 可自定义的图片文件夹命名
+- [x] 进度通知
+- [x] i18n 支持（英文、中文）
+- [x] Pandoc 支持
+- [ ] 高级格式选项（计划中）
+- [ ] 自定义 CSS 样式（计划中）
+
+
 
 ## 功能特性
 
@@ -65,12 +98,18 @@
 ### 语言
 - **语言**：选择插件的语言。选择"Auto"使用 Obsidian 的语言设置。
 
+### 转换引擎
+- **转换器类型**：选择使用的转换器：
+  - **Mammoth.js**：内置的 JavaScript 转换器，速度更快且离线工作
+  - **Pandoc**：外部转换器，格式更准确（需要安装 Pandoc）
+- **Pandoc 路径**：Pandoc 可执行文件的路径。点击"自动检测"自动查找，或留空以使用系统 PATH。
+
 ## 技术细节
 
 ### 转换引擎
-- **Mammoth.js**：用于将 Word 文档转换为 HTML。轻量级且可靠的库。
-- **Turndown**：用于将 HTML 转换为 Markdown，支持适当的格式和表格。
-- **Pandoc 支持**：（计划中）可选的 Pandoc 支持，用于更复杂的文档转换。
+- **Mammoth.js**：内置的 JavaScript 转换器，用于将 Word 文档转换为 HTML。轻量级且可靠。
+- **Turndown**：将 HTML 转换为 Markdown，支持适当的格式和表格。
+- **Pandoc**：可选的外部转换器，用于更准确的文档格式化。需要在系统上安装 Pandoc。
 
 ### 文件支持
 - **Word 2007+**：.docx 文件完全支持
@@ -89,6 +128,8 @@
 ### 错误信息
 - **"文件已存在"**：在设置中启用 "覆盖现有文件" 或重命名输出文件
 - **"不支持的图片类型"**：文档包含不支持的图片格式
+- **"未配置 Pandoc 路径"**：使用 Pandoc 转换器时，必须提供路径或确保 Pandoc 在系统 PATH 中
+- **"未找到 Pandoc"**：使用设置中的"自动检测"按钮，或从 https://pandoc.org/ 安装 Pandoc
 
 ## 开发
 
@@ -113,6 +154,8 @@
 
 欢迎贡献！请随时提交问题、功能请求或拉取请求。
 
-## 许可证
-
 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+---
+
+## English Documentation (README.md)

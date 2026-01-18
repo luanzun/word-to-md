@@ -2,6 +2,7 @@ import { Translation } from './types';
 import { en } from './en';
 import { zh } from './zh';
 import { getLanguage } from 'obsidian';
+import { App } from 'obsidian';
 
 interface ObsidianApp {
   language?: string;
@@ -42,7 +43,7 @@ export class I18n {
    * @param languageCode The language code to set
    * @param app Optional Obsidian app instance for auto-detection
    */
-  setLanguage(languageCode: string, app?: ObsidianApp): void {
+  setLanguage(languageCode: string, app?: App): void {
     let detectedCode: string = languageCode.toLowerCase().split('-')[0];
 
     console.debug('Word to MD: Attempting to set language:', detectedCode);

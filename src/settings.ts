@@ -1,4 +1,8 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 import WordToMdPlugin from './main';
 
 export interface WordToMdSettings {
@@ -8,6 +12,8 @@ export interface WordToMdSettings {
   overwriteExisting: boolean;
   showProgress: boolean;
   language: string;
+  converterType: 'mammoth' | 'pandoc';
+  pandocPath: string;
 }
 
 export const DEFAULT_SETTINGS: WordToMdSettings = {
@@ -16,7 +22,9 @@ export const DEFAULT_SETTINGS: WordToMdSettings = {
   includeProperties: true,
   overwriteExisting: false,
   showProgress: true,
-  language: 'auto'
+  language: 'auto',
+  converterType: 'mammoth',
+  pandocPath: ''
 };
 
 export class WordToMdSettingsTab extends PluginSettingTab {
@@ -107,9 +115,117 @@ export class WordToMdSettingsTab extends PluginSettingTab {
           this.plugin.settings.language = value;
           await this.plugin.saveSettings();
           // Update i18n instance with new language, passing app for auto-detection
-          this.plugin.i18n.setLanguage(value, this.plugin.app as unknown);
+          this.plugin.i18n.setLanguage(value, this.plugin.app);
           // Refresh settings page to show translated text
           this.display();
         }));
+
+    // Converter type setting
+    new Setting(containerEl)
+      .setName(i18n.t('converterTypeName'))
+      .setDesc(i18n.t('converterTypeDesc'))
+      .addDropdown((dropdown) => dropdown
+        .addOption('mammoth', i18n.t('converterTypeMammoth'))
+        .addOption('pandoc', i18n.t('converterTypePandoc'))
+        .setValue(this.plugin.settings.converterType)
+        .onChange(async (value: string) => {
+          this.plugin.settings.converterType = value as 'mammoth' | 'pandoc';
+          await this.plugin.saveSettings();
+          // Refresh settings page to show/hide pandoc path setting
+          this.display();
+        }));
+
+    // Pandoc path setting (only show when pandoc is selected)
+    if (this.plugin.settings.converterType === 'pandoc') {
+      const pandocPathSetting = new Setting(containerEl)
+        .setName(i18n.t('pandocPathName'))
+        .setDesc(i18n.t('pandocPathDesc'))
+        .addText((text) => text
+          .setPlaceholder(i18n.t('pandocPathPlaceholder'))
+          .setValue(this.plugin.settings.pandocPath)
+          .onChange(async (value) => {
+            this.plugin.settings.pandocPath = value;
+            await this.plugin.saveSettings();
+          }));
+
+      // Add auto-detect button
+      pandocPathSetting.addButton((button) => button
+        .setButtonText(i18n.t('autoDetectButton'))
+        .onClick(async () => {
+          button.setButtonText(i18n.t('detectingButton'));
+          button.setDisabled(true);
+
+          try {
+            const detectedPath = await this.detectPandocPath();
+            if (detectedPath) {
+              this.plugin.settings.pandocPath = detectedPath;
+              await this.plugin.saveSettings();
+              pandocPathSetting.controlEl.querySelector('input')?.setAttribute('value', detectedPath);
+              new Notice(i18n.t('pandocDetected', { path: detectedPath }));
+            } else {
+              new Notice(i18n.t('pandocNotFound'));
+            }
+          } catch {
+            console.error('Error detecting pandoc:');
+            new Notice(i18n.t('pandocDetectionFailed'));
+          }
+
+          button.setButtonText(i18n.t('autoDetectButton'));
+          button.setDisabled(false);
+        }));
+    }
+  }
+
+  // Auto-detect pandoc path
+  private async detectPandocPath(): Promise<string | null> {
+    const platform = process.platform;
+    const commonPaths: string[] = [];
+
+    if (platform === 'win32') {
+      // Windows
+      commonPaths.push(
+        'C:\\Program Files\\Pandoc\\pandoc.exe',
+        'C:\\Program Files (x86)\\Pandoc\\pandoc.exe',
+        'pandoc.exe'
+      );
+    } else if (platform === 'darwin') {
+      // macOS
+      commonPaths.push(
+        '/usr/local/bin/pandoc',
+        '/opt/homebrew/bin/pandoc',
+        'pandoc'
+      );
+    } else {
+      // Linux
+      commonPaths.push(
+        '/usr/bin/pandoc',
+        '/usr/local/bin/pandoc',
+        '/snap/bin/pandoc',
+        'pandoc'
+      );
+    }
+
+        // Try to find pandoc in common paths
+        for (const path of commonPaths) {
+          try {
+            const result = await this.execCommand(`"${path}" --version`, 5000);
+            if (result.stdout && result.stdout.includes('pandoc')) {
+              return path;
+            }
+          } catch {
+            // Continue to next path
+          }
+        }
+
+    return null;
+  }
+
+  // Execute shell command
+  private async execCommand(command: string, timeout: number = 10000): Promise<{ stdout: string; stderr: string }> {
+    try {
+      return await execAsync(command, { timeout, maxBuffer: 1024 * 1024 });
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
 }

@@ -1,16 +1,5 @@
 import { Translation } from './types';
-interface ObsidianApp {
-    language?: string;
-    locale?: string;
-    vault?: {
-        config?: {
-            language?: string;
-        };
-    };
-    workspace?: {
-        language?: string;
-    };
-}
+import { App } from 'obsidian';
 export declare const supportedLanguages: {
     en: Translation;
     zh: Translation;
@@ -25,7 +14,7 @@ export declare class I18n {
      * @param languageCode The language code to set
      * @param app Optional Obsidian app instance for auto-detection
      */
-    setLanguage(languageCode: string, app?: ObsidianApp): void;
+    setLanguage(languageCode: string, app?: App): void;
     /**
      * Get the current language code
      * @returns The current language code
@@ -53,5 +42,4 @@ export declare class I18n {
      */
     private getProperty;
 }
-export {};
 //# sourceMappingURL=index.d.ts.map

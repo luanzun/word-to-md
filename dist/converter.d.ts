@@ -12,6 +12,8 @@ export declare class WordConverter {
     convertSingleFile(file: unknown): Promise<boolean>;
     convertFolder(folder: TFolder): Promise<void>;
     private convertBufferToMarkdown;
+    private convertWithMammoth;
+    private convertWithPandoc;
     private extractDocumentProperties;
     private parseCoreProperties;
     private parseAppProperties;
