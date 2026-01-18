@@ -2,6 +2,7 @@
 node_modules/
 错误.md
 main.js
+*.map
 /.codebuddy
 /eslint-plugin-obsidian.md
-/dist
+/dist/*

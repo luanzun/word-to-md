@@ -1,4 +1,5 @@
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+
+import { App, PluginSettingTab, Setting, Notice, Platform } from 'obsidian';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -137,16 +138,22 @@ export class WordToMdSettingsTab extends PluginSettingTab {
 
     // Pandoc path setting (only show when pandoc is selected)
     if (this.plugin.settings.converterType === 'pandoc') {
+      // Variable to store reference to the text component
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let pandocTextComponent: any = null;
       const pandocPathSetting = new Setting(containerEl)
         .setName(i18n.t('pandocPathName'))
         .setDesc(i18n.t('pandocPathDesc'))
-        .addText((text) => text
-          .setPlaceholder(i18n.t('pandocPathPlaceholder'))
-          .setValue(this.plugin.settings.pandocPath)
-          .onChange(async (value) => {
-            this.plugin.settings.pandocPath = value;
-            await this.plugin.saveSettings();
-          }));
+        .addText((text) => {
+          pandocTextComponent = text;
+          return text
+            .setPlaceholder(i18n.t('pandocPathPlaceholder'))
+            .setValue(this.plugin.settings.pandocPath)
+            .onChange(async (value) => {
+              this.plugin.settings.pandocPath = value;
+              await this.plugin.saveSettings();
+            });
+        });
 
       // Add auto-detect button
       pandocPathSetting.addButton((button) => button
@@ -160,7 +167,16 @@ export class WordToMdSettingsTab extends PluginSettingTab {
             if (detectedPath) {
               this.plugin.settings.pandocPath = detectedPath;
               await this.plugin.saveSettings();
-              pandocPathSetting.controlEl.querySelector('input')?.setAttribute('value', detectedPath);
+              // Update the text input field
+              if (pandocTextComponent) {
+                pandocTextComponent.setValue(detectedPath);
+              } else {
+                // Fallback: directly set the input value
+                const inputEl = pandocPathSetting.controlEl.querySelector('input');
+                if (inputEl) {
+                  inputEl.value = detectedPath;
+                }
+              }
               new Notice(i18n.t('pandocDetected', { path: detectedPath }));
             } else {
               new Notice(i18n.t('pandocNotFound'));
@@ -178,15 +194,33 @@ export class WordToMdSettingsTab extends PluginSettingTab {
 
   // Auto-detect pandoc path
   private async detectPandocPath(): Promise<string | null> {
-    const platform = process.platform;
+    // const platform = process.platform;
+    let platform = 'win32'; // 默认假设 Windows
+
+    try {
+      // 尝试多种方式获取平台信息
+      if (typeof process !== 'undefined' && process.platform) {
+        platform = process.platform;
+      } else if (typeof Platform !== 'undefined') {
+        if (Platform.isWin) {
+          platform = 'win32';
+        } else if (Platform.isMacOS) {
+          platform = 'darwin';
+        } else if (Platform.isLinux) {
+          platform = 'linux';
+        }
+      }
+    } catch (error) {
+      console.warn('无法获取平台信息，使用默认值:', error);
+    }
+
     const commonPaths: string[] = [];
 
     if (platform === 'win32') {
       // Windows
       commonPaths.push(
         'C:\\Program Files\\Pandoc\\pandoc.exe',
-        'C:\\Program Files (x86)\\Pandoc\\pandoc.exe',
-        'pandoc.exe'
+        'C:\\Program Files (x86)\\Pandoc\\pandoc.exe'
       );
     } else if (platform === 'darwin') {
       // macOS
@@ -205,17 +239,67 @@ export class WordToMdSettingsTab extends PluginSettingTab {
       );
     }
 
-        // Try to find pandoc in common paths
-        for (const path of commonPaths) {
-          try {
-            const result = await this.execCommand(`"${path}" --version`, 5000);
-            if (result.stdout && result.stdout.includes('pandoc')) {
-              return path;
-            }
-          } catch {
-            // Continue to next path
+    // First, try to find pandoc in system PATH
+    try {
+      if (platform === 'win32') {
+        // On Windows, try multiple approaches
+        // 1. Try 'pandoc --version' first (simplest)
+        try {
+          const result = await this.execCommand('pandoc --version', 3000);
+          if (result.stdout && result.stdout.includes('pandoc')) {
+            console.debug('Pandoc found via direct command execution');
+            return 'pandoc';
           }
+        } catch {
+          // Continue to other methods
         }
+
+        // 2. Try 'where pandoc' command
+        try {
+          const result = await this.execCommand('where pandoc', 3000);
+          if (result.stdout && result.stdout.trim()) {
+            const detectedPath = result.stdout.trim().split('\n')[0].trim();
+            console.debug('Pandoc detected via where command:', detectedPath);
+            return detectedPath;
+          }
+        } catch {
+          // Continue to other methods
+        }
+        // 3. Try 'cmd /c where pandoc' as fallback
+        try {
+          const result = await this.execCommand('cmd /c where pandoc', 3000);
+          if (result.stdout && result.stdout.trim()) {
+            const detectedPath = result.stdout.trim().split('\n')[0].trim();
+            console.debug('Pandoc detected via cmd /c where command:', detectedPath);
+            return detectedPath;
+          }
+        } catch {
+          // Continue to common paths
+        }
+      } else {
+        // Non-Windows: use which command
+        const result = await this.execCommand('which pandoc', 5000);
+        if (result.stdout && result.stdout.trim()) {
+          const detectedPath = result.stdout.trim().split('\n')[0].trim();
+          console.debug('Pandoc detected via system PATH:', detectedPath);
+          return detectedPath;
+        }
+      }
+    } catch {
+      console.debug('Could not find pandoc via system PATH, trying common paths...');
+    }
+
+    // Try to find pandoc in common paths
+    for (const path of commonPaths) {
+      try {
+        const result = await this.execCommand(`"${path}" --version`, 5000);
+        if (result.stdout && result.stdout.includes('pandoc')) {
+          return path;
+        }
+      } catch {
+        // Continue to next path
+      }
+    }
 
     return null;
   }
@@ -223,8 +307,12 @@ export class WordToMdSettingsTab extends PluginSettingTab {
   // Execute shell command
   private async execCommand(command: string, timeout: number = 10000): Promise<{ stdout: string; stderr: string }> {
     try {
-      return await execAsync(command, { timeout, maxBuffer: 1024 * 1024 });
+      console.debug('Word to MD: Executing command:', command);
+      const result = await execAsync(command, { timeout, maxBuffer: 1024 * 1024 });
+      console.debug('Word to MD: Command successful, stdout length:', result.stdout.length);
+      return result;
     } catch (error) {
+      console.debug('Word to MD: Command failed:', command, 'Error:', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
