@@ -1,8 +1,8 @@
 import { Translation } from './types';
 
 export const en: Translation = {
-  // Plugin name - 插件名通常作为品牌，首字母大写
-  pluginName: 'Word to Markdown', 
+  // Plugin name
+  pluginName: 'Word to Markdown',
   pluginDescription: 'Convert word documents to Markdown with proper formatting, images, and properties.',
 
   // Settings page

@@ -1,7 +1,6 @@
 export interface Translation {
     pluginName: string;
     pluginDescription: string;
-    settingsTitle: string;
     outputFolderName: string;
     outputFolderDesc: string;
     outputFolderPlaceholder: string;
