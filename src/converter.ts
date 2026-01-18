@@ -325,7 +325,25 @@ export class WordConverter {
         filter: 'table',
         replacement: (content, node) => {
           if (node instanceof HTMLElement) {
-            return this.convertHtmlTablesToMarkdown(node.outerHTML);
+            let markdownTable = '\n';
+            const rows = node.querySelectorAll('tr');
+
+            rows.forEach((row, rowIndex) => {
+              const cells = row.querySelectorAll('th, td');
+              const cellContents = Array.from(cells).map(cell =>
+                cell.textContent?.trim() || ''
+              );
+
+              markdownTable += `| ${cellContents.join(' | ')} |\n`;
+
+              // Add separator row after header
+              if (rowIndex === 0) {
+                const separators = cellContents.map(() => '---');
+                markdownTable += `| ${separators.join(' | ')} |\n`;
+              }
+            });
+
+            return markdownTable;
           }
           return content;
         }
@@ -341,49 +359,6 @@ export class WordConverter {
       console.error('Error details:', error instanceof Error ? error.stack : String(error));
       throw error;
     }
-  }
-
-  // Convert HTML tables to proper Markdown tables
-  private convertHtmlTablesToMarkdown(html: string): string {
-    // Create a DOMParser to safely parse HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Find all tables
-    const tables = doc.querySelectorAll('table');
-    let resultHtml = html;
-
-    // Process each table
-    tables.forEach(table => {
-      let markdownTable = '\n';
-
-      // Get all rows
-      const rows = table.querySelectorAll('tr');
-
-      // Process each row
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const cells = row.querySelectorAll('th, td');
-        const cellContents = Array.from(cells).map(cell => {
-          // Get text content and trim whitespace
-          return cell.textContent?.trim() || '';
-        });
-
-        // Add row to markdown table
-        markdownTable += `| ${cellContents.join(' | ')} |\n`;
-
-        // Add separator row after header
-        if (i === 0) {
-          const separators = cellContents.map(() => '---');
-          markdownTable += `| ${separators.join(' | ')} |\n`;
-        }
-      }
-
-      // Replace the table's outerHTML with markdown table in the result
-      resultHtml = resultHtml.replace(table.outerHTML, markdownTable);
-    });
-
-    return resultHtml;
   }
 
   // Extract document properties from Word file

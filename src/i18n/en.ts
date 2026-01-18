@@ -9,25 +9,25 @@ export const en: Translation = {
   settingsTitle: 'Word to MD Settings',
 
   // Output folder setting
-  outputFolderName: 'Output Folder',
+  outputFolderName: 'Output folder name',
   outputFolderDesc: 'Folder where converted Markdown files will be saved. Leave empty to save in the same folder as the original file.',
   outputFolderPlaceholder: 'Enter folder path',
 
   // Image folder name setting
-  imageFolderName: 'Image Folder Name',
+  imageFolderName: 'Image folder name',
   imageFolderDesc: 'Name of the folder where images will be saved. {documentName} will be replaced with the document name.',
   imageFolderPlaceholder: 'Enter folder name pattern',
 
   // Include properties setting
-  includePropertiesName: 'Include Document Properties',
+  includePropertiesName: 'Include document properties',
   includePropertiesDesc: 'Add Word document properties as YAML front matter and tags.',
 
   // Overwrite existing files setting
-  overwriteExistingName: 'Overwrite Existing Files',
+  overwriteExistingName: 'Overwrite existing files',
   overwriteExistingDesc: 'Overwrite existing Markdown files with the same name.',
 
   // Show progress setting
-  showProgressName: 'Show Progress',
+  showProgressName: 'Show progress',
   showProgressDesc: 'Show progress notifications during conversion.',
 
   // Language setting
@@ -54,7 +54,7 @@ export const en: Translation = {
   batchConversionError: 'Error during batch conversion: {error}',
 
   // Folder picker
-  selectFolderTitle: 'Select Folder to Convert Word Documents',
+  selectFolderTitle: 'Select folder to convert Word documents',
   convertButton: 'Convert',
   cancelButton: 'Cancel',
   folderPickerNotImplemented: 'Folder picker not implemented yet, please use context menu on folder'

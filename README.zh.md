@@ -103,6 +103,8 @@
 3. 构建插件：`npm run build`
 4. 构建后的插件文件将位于根目录中（main.js、manifest.json 等）
 
+详细的构建说明，请参阅 [构建指南](BUILD.zh.md) | [Build Guide](BUILD.md)
+
 ### 开发模式
 1. 运行 `npm run dev` 启动 TypeScript 编译器的监视模式
 2. 当源文件更改时，插件将自动重新构建

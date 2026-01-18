@@ -33,10 +33,16 @@ export class FileHelper {
 
   // Get all Word files in a folder
   getWordFilesInFolder(folder: TFolder): TFile[] {
-    return this.plugin.app.vault.getFiles().filter(file =>
-      file.parent && file.parent.path === folder.path &&
-      (file.extension === 'docx' || file.extension === 'doc')
-    );
+    const wordFiles: TFile[] = [];
+
+    // Use folder.children to avoid iterating all vault files
+    for (const child of folder.children) {
+      if (child instanceof TFile && (child.extension === 'docx' || child.extension === 'doc')) {
+        wordFiles.push(child);
+      }
+    }
+
+    return wordFiles;
   }
 
   // Generate unique file path if file already exists

@@ -103,6 +103,8 @@ Open Obsidian settings and navigate to the "Word to MD" section to configure the
 3. Build the plugin: `npm run build`
 4. The built plugin files will be in the root directory (main.js, manifest.json, etc.)
 
+For detailed build instructions, see the [Build Guide](BUILD.md) | [构建指南](BUILD.zh.md)
+
 ### Development Mode
 1. Run `npm run dev` to start the TypeScript compiler in watch mode
 2. The plugin will automatically rebuild when source files change
