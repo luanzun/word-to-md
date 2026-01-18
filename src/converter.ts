@@ -421,13 +421,12 @@ export class WordConverter {
       //console.debug('Word to MD: Temp media directory:', mediaDir);
 
       // Execute pandoc
-      const { stdout, stderr } = await execAsync(pandocCommand, {
+      const { stdout: _stdout, stderr } = await execAsync(pandocCommand, {
         timeout: 60000,
         maxBuffer: 10 * 1024 * 1024 // 10MB buffer
       });
 
       // stdout is not used but kept for debugging
-      //console.debug('Pandoc output:', stdout);
 
       if (stderr && stderr.includes('Error')) {
         throw new Error(`Pandoc error: ${stderr}`);
@@ -850,7 +849,7 @@ export class WordConverter {
     // Pandoc typically creates references like: ![alt](media/image1.png)
     // We need to update these to point to the saved images
     let updatedContent = markdownContent;
-    let replacementCount = 0;
+    let _replacementCount = 0;
 
     // First, remove any HTML attributes from markdown image references
     // Pandoc may generate: ![alt](media/image1.png){width="6.5in" height="2.4in"}
@@ -886,7 +885,7 @@ export class WordConverter {
             // Replace with new path
             const replacement = `![${alt}](${newPath})`;
             updatedContent = updatedContent.replace(match, replacement);
-            replacementCount++;
+            _replacementCount++;
             //console.debug('Word to MD: Replaced:', match.substring(0, 50), '->', replacement);
           }
         }
@@ -920,14 +919,13 @@ export class WordConverter {
 
             const replacement = `![${alt}](${newPath})`;
             updatedContent = updatedContent.replace(match, replacement);
-            replacementCount++;
-            //console.debug('Word to MD: Replaced pandoc media:', match.substring(0, 80), '->', replacement);
+            _replacementCount++;
           }
         }
       }
     }
 
-    //console.debug('Word to MD: Total image replacements:', replacementCount);
+    //console.debug('Word to MD: Total image replacements:', _replacementCount);
     return updatedContent;
   }
 }
