@@ -1,3 +1,11 @@
+/*
+ * @Author: fusemsg fuyun365@gmail.com
+ * @Date: 2026-01-16 16:39:45
+ * @LastEditors: fusemsg fuyun365@gmail.com
+ * @LastEditTime: 2026-01-18 15:18:04
+ * @FilePath: \word-to-md\rollup.config.js
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
@@ -8,6 +16,7 @@ export default {
     dir: '.',
     format: 'cjs',
     exports: 'default',
+    sourcemap: process.env.NODE_ENV !== 'production',
   },
   external: ['obsidian'],
   plugins: [

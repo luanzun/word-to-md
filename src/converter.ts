@@ -1,10 +1,18 @@
 import { Notice, TFile, TFolder, normalizePath, Modal, App } from 'obsidian';
 import WordToMdPlugin from './main';
-import * as mammoth from 'mammoth';
+import mammoth from 'mammoth';
 import AdmZip from 'adm-zip';
 import { ImageProcessor } from './utils/imageProcessor';
 import { FileHelper } from './utils/fileHelper';
 import TurndownService from 'turndown';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFileSync, unlinkSync, existsSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import * as fs from 'fs';
+
+const execAsync = promisify(exec);
 
 interface DocumentProperties {
   title?: string;
@@ -92,16 +100,18 @@ export class WordConverter {
         const convertButton = contentEl.createEl('button', { text: i18n.t('convertButton') });
         convertButton.addClass('word-to-md-button-right');
 
-        convertButton.addEventListener('click', (async () => {
-          const selectedFolderPath = select.value;
-          if (selectedFolderPath) {
-            const selectedFolder = this.app.vault.getAbstractFileByPath(selectedFolderPath);
-            if (selectedFolder && selectedFolder instanceof TFolder) {
-              await this.wordConverter.convertFolder(selectedFolder);
-              this.close();
+        convertButton.addEventListener('click', () => {
+          void (async () => {
+            const selectedFolderPath = select.value;
+            if (selectedFolderPath) {
+              const selectedFolder = this.app.vault.getAbstractFileByPath(selectedFolderPath);
+              if (selectedFolder && selectedFolder instanceof TFolder) {
+                await this.wordConverter.convertFolder(selectedFolder);
+                this.close();
+              }
             }
-          }
-        }).bind(this));
+          })();
+        });
 
         // Create cancel button
         const cancelButton = contentEl.createEl('button', { text: i18n.t('cancelButton') });
@@ -260,105 +270,321 @@ export class WordConverter {
   // Convert Word buffer to Markdown
   private async convertBufferToMarkdown(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
     try {
-      // Get document properties
-      const properties = this.extractDocumentProperties(buffer);
-
-      // Local image counter for this document conversion
-      let imageCounter = 0;
-
-      // Configure mammoth options
-      const options = {
-        // Add image conversion configuration
-        convertImage: mammoth.images.imgElement((async (image: MammothImage) => {
-          try {
-            // Increment image counter
-            imageCounter++;
-            // Read the image buffer
-            const imageBuffer = await image.read();
-
-            // Save the image to the appropriate folder
-            const imagePath = await this.imageProcessor.saveImage(
-              imageBuffer,
-              documentName,
-              outputFolder,
-              image.contentType,
-              imageCounter
-            );
-
-            console.debug('Word to MD: Image saved to', imagePath);
-
-            // Return the image attributes as expected by mammoth
-            return {
-              src: imagePath,
-              alt: `Image ${imageCounter}`
-            };
-          } catch (error) {
-            console.error('Word to MD: Error processing image:', error);
-            return {
-              src: '#',
-              alt: 'Error loading image'
-            };
-          }
-        }).bind(this))
-      } as unknown;
-
-      // Convert to HTML first (mammoth doesn't have a convertToMarkdown method)
-      const htmlResult = await mammoth.convertToHtml({
-        arrayBuffer: buffer
-      }, options);
-
-      // Generate YAML front matter with document properties
-      let frontMatter = '';
-      if (this.plugin.settings.includeProperties && properties) {
-        frontMatter = this.generateFrontMatter(properties);
+      // Check which converter to use
+      if (this.plugin.settings.converterType === 'pandoc') {
+        return await this.convertWithPandoc(buffer, documentName, outputFolder);
+      } else {
+        return await this.convertWithMammoth(buffer, documentName, outputFolder);
       }
-
-      // Initialize Turndown service for HTML to Markdown conversion
-      const turndownService = new TurndownService({
-        headingStyle: 'atx',
-        codeBlockStyle: 'fenced',
-        emDelimiter: '*'
-      });
-
-      // Use our custom table converter for better table handling
-      turndownService.addRule('tables', {
-        filter: 'table',
-        replacement: (content, node) => {
-          if (node instanceof HTMLElement) {
-            let markdownTable = '\n';
-            const rows = node.querySelectorAll('tr');
-
-            rows.forEach((row, rowIndex) => {
-              const cells = row.querySelectorAll('th, td');
-              const cellContents = Array.from(cells).map(cell =>
-                cell.textContent?.trim() || ''
-              );
-
-              markdownTable += `| ${cellContents.join(' | ')} |\n`;
-
-              // Add separator row after header
-              if (rowIndex === 0) {
-                const separators = cellContents.map(() => '---');
-                markdownTable += `| ${separators.join(' | ')} |\n`;
-              }
-            });
-
-            return markdownTable;
-          }
-          return content;
-        }
-      });
-
-      // Convert HTML to Markdown
-      const markdownContent = turndownService.turndown(htmlResult.value);
-
-      // Return Markdown content with front matter
-      return frontMatter + markdownContent;
     } catch (error) {
       console.error('Error converting buffer to Markdown:', error);
       console.error('Error details:', error instanceof Error ? error.stack : String(error));
       throw error;
     }
+  }
+
+  // Convert using Mammoth.js + Turndown
+  private async convertWithMammoth(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
+    // Get document properties
+    const properties = this.extractDocumentProperties(buffer);
+
+    // Local image counter for this document conversion
+    let imageCounter = 0;
+
+    // Configure mammoth options
+    const options = {
+      // Add image conversion configuration
+      convertImage: mammoth.images.imgElement((async (image: MammothImage) => {
+        try {
+          // Increment image counter
+          imageCounter++;
+          // Read the image buffer
+          const imageBuffer = await image.read();
+
+          // Save the image to the appropriate folder
+          const imagePath = await this.imageProcessor.saveImage(
+            imageBuffer,
+            documentName,
+            outputFolder,
+            image.contentType,
+            imageCounter
+          );
+
+          // console.debug('Word to MD: Image saved to', imagePath);
+
+          // Return the image attributes as expected by mammoth
+          return {
+            src: imagePath,
+            alt: `Image ${imageCounter}`
+          };
+        } catch (error) {
+          console.error('Word to MD: Error processing image:', error);
+          return {
+            src: '#',
+            alt: 'Error loading image'
+          };
+        }
+      }).bind(this))
+    } as unknown;
+
+      // Convert to HTML first (mammoth doesn't have a convertToMarkdown method)
+      const htmlResult = await mammoth.convertToHtml(
+        { arrayBuffer: buffer },
+        options as Record<string, unknown>
+      );
+
+    // Generate YAML front matter with document properties
+    let frontMatter = '';
+    if (this.plugin.settings.includeProperties && properties) {
+      frontMatter = this.generateFrontMatter(properties);
+    }
+
+    // Initialize Turndown service for HTML to Markdown conversion
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+      emDelimiter: '*'
+    });
+
+    // Use our custom table converter for better table handling
+    turndownService.addRule('tables', {
+      filter: 'table',
+      replacement: (content, node) => {
+        if (node instanceof HTMLElement) {
+          let markdownTable = '\n';
+          const rows = node.querySelectorAll('tr');
+
+          rows.forEach((row, rowIndex) => {
+            const cells = row.querySelectorAll('th, td');
+            const cellContents = Array.from(cells).map(cell =>
+              cell.textContent?.trim() || ''
+            );
+
+            markdownTable += `| ${cellContents.join(' | ')} |\n`;
+
+            // Add separator row after header
+            if (rowIndex === 0) {
+              const separators = cellContents.map(() => '---');
+              markdownTable += `| ${separators.join(' | ')} |\n`;
+            }
+          });
+
+          return markdownTable;
+        }
+        return content;
+      }
+    });
+
+    // Convert HTML to Markdown
+    const markdownContent = turndownService.turndown(htmlResult.value);
+
+    // Return Markdown content with front matter
+    return frontMatter + markdownContent;
+  }
+
+  // Convert using Pandoc
+  private async convertWithPandoc(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<string> {
+    const i18n = this.plugin.i18n;
+
+    // Check if pandoc path is configured
+    const pandocPath = this.plugin.settings.pandocPath || 'pandoc';
+    if (!pandocPath) {
+      throw new Error(i18n.t('pandocPathNotConfigured'));
+    }
+
+    // Create temporary file for the Word document
+    // Use unique temp directory to avoid conflicts
+    const uniqueTempDir = join(tmpdir(), `word-to-md-${Date.now()}`);
+    const tempInputPath = join(uniqueTempDir, `${documentName}.docx`);
+    const tempOutputPath = join(uniqueTempDir, `${documentName}.md`);
+
+    try {
+      // Create temporary directory
+      fs.mkdirSync(uniqueTempDir, { recursive: true });
+
+      // Extract raster images (PNG, JPG, etc.) before conversion
+      const imageMap = await this.extractImagesFromDocx(buffer, documentName, outputFolder);
+      //console.debug('Word to MD: Extracted images:', Object.keys(imageMap).length);
+
+      // Write buffer to temporary file
+      const nodeBuffer = Buffer.from(buffer);
+      writeFileSync(tempInputPath, nodeBuffer);
+
+      // Prepare pandoc command - convert to markdown with embedded images
+      const mediaDir = join(uniqueTempDir, 'media');
+      // Ensure media directory exists
+      fs.mkdirSync(mediaDir, { recursive: true });
+      const pandocCommand = `"${pandocPath}" "${tempInputPath}" -t markdown -o "${tempOutputPath}" --wrap=preserve --extract-media="${mediaDir}"`;
+
+      //console.debug('Word to MD: Executing pandoc command:', pandocCommand);
+      //console.debug('Word to MD: Temp directory:', uniqueTempDir);
+      //console.debug('Word to MD: Temp media directory:', mediaDir);
+
+      // Execute pandoc
+      const { stdout: _stdout, stderr } = await execAsync(pandocCommand, {
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+      });
+
+      // stdout is not used but kept for debugging
+
+      if (stderr && stderr.includes('Error')) {
+        throw new Error(`Pandoc error: ${stderr}`);
+      }
+
+      // Read the converted markdown
+      let markdownContent = await fs.promises.readFile(tempOutputPath, 'utf-8');
+
+      // Check if pandoc extracted media files
+      if (existsSync(join(uniqueTempDir, 'media'))) {
+        const extractedMediaDir = join(uniqueTempDir, 'media');
+        //console.debug('Word to MD: Pandoc extracted media to:', extractedMediaDir);
+        // Copy extracted media files to the output folder and build map
+        const pandocMediaMap = await this.copyMediaFiles(extractedMediaDir, documentName, outputFolder);
+
+        // Update image references to point to saved images
+        markdownContent = this.updateImageReferences(markdownContent, imageMap, pandocMediaMap);
+      } else {
+        //console.debug('Word to MD: No media directory found in temp dir');
+        // No media extracted by pandoc, just use our extracted images
+        if (Object.keys(imageMap).length > 0) {
+          markdownContent = this.updateImageReferences(markdownContent, imageMap, {});
+        }
+      }
+
+      // Add document properties if enabled
+      if (this.plugin.settings.includeProperties) {
+        const properties = this.extractDocumentProperties(buffer);
+        const frontMatter = this.generateFrontMatter(properties);
+        markdownContent = frontMatter + markdownContent;
+      }
+
+      return markdownContent;
+    } finally {
+      // Clean up temporary files
+      try {
+        if (existsSync(tempInputPath)) {
+          unlinkSync(tempInputPath);
+        }
+        if (existsSync(tempOutputPath)) {
+          unlinkSync(tempOutputPath);
+        }
+        // Clean up media directory (may be a subdirectory)
+        const mediaDir1 = join(uniqueTempDir, 'media');
+        const mediaDir2 = join(uniqueTempDir, 'media', 'media');
+        for (const dirToClean of [mediaDir1, mediaDir2, join(uniqueTempDir, 'media')]) {
+          if (existsSync(dirToClean)) {
+            fs.rmSync(dirToClean, { recursive: true, force: true });
+            //console.debug('Word to MD: Cleaned up media directory:', dirToClean);
+          }
+        }
+        // Also try to clean up the base temp directory
+        if (existsSync(uniqueTempDir) && uniqueTempDir !== tmpdir()) {
+          fs.rmSync(uniqueTempDir, { recursive: true, force: true });
+          //console.debug('Word to MD: Cleaned up temp directory:', uniqueTempDir);
+        }
+      } catch (error) {
+        console.warn('Warning: Could not clean up temporary files:', error);
+      }
+    }
+  }
+
+  // Copy media files extracted by pandoc to output folder
+  private async copyMediaFiles(mediaDir: string, documentName: string, outputFolder: string): Promise<Record<string, string>> {
+    //console.debug('Word to MD: copyMediaFiles called with dir:', mediaDir);
+
+    // Pandoc's --extract-media may create a 'media' subdirectory
+    // Check if there's a 'media' subdirectory
+    const mediaSubDir = join(mediaDir, 'media');
+    let actualMediaDir = mediaDir;
+
+    if (existsSync(mediaSubDir)) {
+      //console.debug('Word to MD: Found media subdirectory, using:', mediaSubDir);
+      actualMediaDir = mediaSubDir;
+    }
+
+    const mediaFiles = await fs.promises.readdir(actualMediaDir);
+    //console.debug('Word to MD: Files in media directory:', mediaFiles);
+
+    const mediaMap: Record<string, string> = {};
+
+    for (const file of mediaFiles) {
+      const srcPath = join(actualMediaDir, file);
+      const ext = file.split('.').pop()?.toLowerCase();
+      //console.debug('Word to MD: Processing media file:', file, 'ext:', ext);
+
+      // Only copy image files
+      if (ext && ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'emf', 'wmf'].includes(ext)) {
+        // Determine image number from filename
+        const match = file.match(/(\d+)/);
+        const imageNum = match ? parseInt(match[1]) : 0;
+
+        // Read the image file
+        const imageBuffer = await fs.promises.readFile(srcPath);
+        //console.debug('Word to MD: Read media file, size:', imageBuffer.length);
+
+        // For EMF/WMF vector formats, save with original extension
+        // These cannot be converted to PNG directly in Node.js
+        // let finalExt = ext;
+        let finalBuffer = imageBuffer;
+        let contentType = this.getContentType(ext);
+
+        if (ext === 'emf' || ext === 'wmf') {
+          //console.debug('Word to MD: EMF/WMF file detected, keeping original format');
+          // Save with original extension but correct MIME type
+          // finalExt = ext;  // Keep as .emf or .wmf
+          contentType = this.getContentType(ext);  // Use correct MIME type
+          finalBuffer = imageBuffer;  // No conversion
+        }
+
+        let imagePath: string;
+
+        if (ext === 'emf' || ext === 'wmf') {
+          // For EMF/WMF files, save directly with original extension
+          // Generate image folder name using plugin settings
+          const imageFolderName = this.plugin.settings.imageFolderName
+            .replace('{documentName}', documentName)
+            .replace('{timestamp}', Date.now().toString());
+
+          // Create image folder path
+          const imageFolderPath = normalizePath(`${outputFolder}/${imageFolderName}`);
+
+          // Ensure the image folder exists
+          await this.plugin.app.vault.adapter.mkdir(imageFolderPath);
+
+          // Generate image file name
+          const imageFileName = `${documentName}_image_${imageNum}.${ext}`;
+
+          // Create full image file path
+          const imageFilePath = normalizePath(`${imageFolderPath}/${imageFileName}`);
+
+          // Write image buffer to file
+          await this.plugin.app.vault.adapter.writeBinary(imageFilePath, finalBuffer);
+
+          // Return relative path for Markdown reference
+          imagePath = `./${imageFolderName}/${imageFileName}`;
+        } else {
+          // For other image formats, use ImageProcessor
+          imagePath = await this.imageProcessor.saveImage(
+            finalBuffer,
+            documentName,
+            outputFolder,
+            contentType,
+            imageNum
+          );
+        }
+
+        // Map media filename (with path prefix if needed) to saved path
+        // The key should match what pandoc references in markdown (e.g., "image1.emf")
+        const mapKey = file;
+        mediaMap[mapKey] = imagePath;
+        //console.debug('Word to MD: Copied media file:', file, '->', imagePath);
+      } else {
+        //console.debug('Word to MD: Skipping non-image file:', file);
+      }
+    }
+
+    return mediaMap;
   }
 
   // Extract document properties from Word file
@@ -530,5 +756,176 @@ export class WordConverter {
 
     frontMatter += '---\n\n';
     return frontMatter;
+  }
+
+  // Extract images from Word document
+  private async extractImagesFromDocx(buffer: ArrayBuffer, documentName: string, outputFolder: string): Promise<Record<string, string>> {
+    const imageMap: Record<string, string> = {};
+
+    try {
+      // Convert ArrayBuffer to Buffer for AdmZip
+      const nodeBuffer = Buffer.from(buffer);
+      const zip = new AdmZip(nodeBuffer);
+
+      // Get all entries from the zip file
+      const entries = zip.getEntries();
+
+      //console.debug('Word to MD: All entries in docx:', entries.map(e => e.entryName).slice(0, 20));
+
+      // Filter for raster image files (PNG, JPG, etc.) - skip EMF/WMF
+      const imageEntries = entries.filter(entry => {
+        const name = entry.entryName;
+        return name.match(/(word\/media\/)?image\d+\.(png|jpg|jpeg|gif|bmp|svg)$/i);
+      });
+
+      //console.debug('Word to MD: Found raster images in document:', imageEntries.length);
+      //console.debug('Word to MD: Image entries:', imageEntries.map(e => e.entryName));
+
+      // Extract and save each image
+      let imageCounter = 0;
+      for (const entry of imageEntries) {
+        try {
+          imageCounter++;
+          const imageBuffer = entry.getData();
+
+          // Get file extension from entry name
+          const match = entry.entryName.match(/\.(\w+)$/);
+          const extension = match ? match[1].toLowerCase() : 'png';
+
+          // Create MIME type
+          const contentType = this.getContentType(extension);
+
+          // Save image using ImageProcessor
+          const imagePath = await this.imageProcessor.saveImage(
+            imageBuffer,
+            documentName,
+            outputFolder,
+            contentType,
+            imageCounter
+          );
+
+          // Map original image reference (both formats) to saved path
+          const shortName = entry.entryName.replace(/^(word\/media\/|media\/)/, '');
+          imageMap[entry.entryName] = imagePath;
+          imageMap[shortName] = imagePath;
+          //console.debug('Word to MD: Extracted image:', entry.entryName, '->', imagePath);
+        } catch (error) {
+          console.error('Word to MD: Error extracting image:', entry.entryName, error);
+        }
+      }
+
+      return imageMap;
+    } catch (error) {
+      console.error('Word to MD: Error extracting images:', error);
+      return imageMap;
+    }
+  }
+
+  // Get content type from file extension
+  private getContentType(extension: string): string {
+    const typeMap: Record<string, string> = {
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'bmp': 'image/bmp',
+      'svg': 'image/svg+xml',
+      'emf': 'application/x-msmetafile',
+      'wmf': 'application/x-msmetafile'
+    };
+    return typeMap[extension] || 'image/png';
+  }
+
+  // Update image references in markdown content
+  private updateImageReferences(
+    markdownContent: string,
+    imageMap: Record<string, string>,
+    pandocMediaMap: Record<string, string>
+  ): string {
+    //console.debug('Word to MD: Updating image references in markdown, length:', markdownContent.length);
+    //console.debug('Word to MD: Image map keys:', Object.keys(imageMap));
+    //console.debug('Word to MD: Pandoc media map keys:', Object.keys(pandocMediaMap));
+
+    // Pandoc typically creates references like: ![alt](media/image1.png)
+    // We need to update these to point to the saved images
+    let updatedContent = markdownContent;
+    let _replacementCount = 0;
+
+    // First, remove any HTML attributes from markdown image references
+    // Pandoc may generate: ![alt](media/image1.png){width="6.5in" height="2.4in"}
+    updatedContent = updatedContent.replace(/\{[^}]+\}/g, '');
+
+    // Then process image references from our extraction
+    for (const [originalPath, newPath] of Object.entries(imageMap)) {
+      // Get the filename (without path prefix)
+      const filename = originalPath.replace(/^(word\/media\/|media\/)/, '');
+      const filenameNoExt = filename.replace(/\.\w+$/, '');
+
+      // Create regex patterns for different formats pandoc might use
+      // Pattern 1: ![alt](media/image1.png)
+      // Pattern 2: ![alt](image1.png)
+      // Pattern 3: <img src="media/image1.png">
+      const patterns = [
+        new RegExp(`!\\[([^\\]]*)\\]\\(media\\/${filenameNoExt}\\.(png|PNG|jpe?g|JPE?G|gif|GIF|bmp|BMP|svg|SVG)\\)`, 'g'),
+        new RegExp(`!\\[([^\\]]*)\\]\\(${filenameNoExt}\\.(png|PNG|jpe?g|JPE?G|gif|GIF|bmp|BMP|svg|SVG)\\)`, 'g'),
+        new RegExp(`<img[^>]+src=["']media\\/${filenameNoExt}\\.(png|PNG|jpe?g|JPE?G|gif|GIF|bmp|BMP|svg|SVG)["'][^>]*>`, 'gi'),
+        new RegExp(`<img[^>]+src=["']${filenameNoExt}\\.(png|PNG|jpe?g|JPE?G|gif|GIF|bmp|BMP|svg|SVG)["'][^>]*>`, 'gi')
+      ];
+
+      // Try each pattern
+      for (const pattern of patterns) {
+        const matches = updatedContent.match(pattern);
+        if (matches) {
+          //console.debug(`Word to MD: Found ${matches.length} matches for pattern`, pattern);
+          for (const match of matches) {
+            // Extract alt text if it's markdown format
+            const altMatch = match.match(/^!\[([^\]]*)\]/);
+            const alt = altMatch ? altMatch[1] : 'Image';
+
+            // Replace with new path
+            const replacement = `![${alt}](${newPath})`;
+            updatedContent = updatedContent.replace(match, replacement);
+            _replacementCount++;
+            //console.debug('Word to MD: Replaced:', match.substring(0, 50), '->', replacement);
+          }
+        }
+      }
+    }
+
+    // Also update references to pandoc-extracted media files (EMF, etc.)
+    for (const [mediaName, newPath] of Object.entries(pandocMediaMap)) {
+      // Escape the dot in filename for regex
+      const escapedMediaName = mediaName.replace(/\./g, '\\.');
+
+      // Handle both relative paths and absolute paths that pandoc might generate
+      const patterns = [
+        // Match relative path: ![alt](media/image1.emf)
+        new RegExp(`!\\[([^\\]]*)\\]\\(media\\/${escapedMediaName}\\)`, 'g'),
+        // Match relative path without media prefix: ![alt](image1.emf)
+        new RegExp(`!\\[([^\\]]*)\\]\\(${escapedMediaName}\\)`, 'g'),
+        // Match absolute path (Windows): ![alt](C:\...\media\image1.emf)
+        new RegExp(`!\\[([^\\]]*)\\]\\([A-Za-z]:[^)]*media[/\\\\]${escapedMediaName}\\)`, 'g'),
+        // Match absolute path (Unix): ![alt](/tmp/.../media/image1.emf)
+        new RegExp(`!\\[([^\\]]*)\\]\\([^)]*media[/\\\\]${escapedMediaName}\\)`, 'g')
+      ];
+
+      for (const pattern of patterns) {
+        const matches = updatedContent.match(pattern);
+        if (matches) {
+          //console.debug(`Word to MD: Found ${matches.length} matches for pandoc media`, mediaName, 'pattern:', pattern);
+          for (const match of matches) {
+            const altMatch = match.match(/^!\[([^\]]*)\]/);
+            const alt = altMatch ? altMatch[1] : 'Image';
+
+            const replacement = `![${alt}](${newPath})`;
+            updatedContent = updatedContent.replace(match, replacement);
+            _replacementCount++;
+          }
+        }
+      }
+    }
+
+    //console.debug('Word to MD: Total image replacements:', _replacementCount);
+    return updatedContent;
   }
 }

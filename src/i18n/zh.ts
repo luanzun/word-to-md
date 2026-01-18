@@ -1,12 +1,17 @@
+/*
+ * @Author: fusemsg fuyun365@gmail.com
+ * @Date: 2026-01-18 21:52:12
+ * @LastEditors: fusemsg fuyun365@gmail.com
+ * @LastEditTime: 2026-01-18 21:57:13
+ * @FilePath: \word-to-md\src\i18n\zh.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 import { Translation } from './types';
 
 export const zh: Translation = {
   // Plugin name and description
   pluginName: 'Word转MD',
   pluginDescription: '将Word文档转换为Markdown，保留格式、图片和属性。',
-
-  // Settings page
-  settingsTitle: 'Word转MD 设置',
 
   // Output folder setting
   outputFolderName: '输出文件夹',
@@ -33,6 +38,23 @@ export const zh: Translation = {
   // Language setting
   languageName: '语言',
   languageDesc: '选择插件的语言。选择"Auto"使用Obsidian的语言设置。',
+
+  // Converter type setting
+  converterTypeName: '转换器类型',
+  converterTypeDesc: '选择用于转换 Word 文档的转换器。Mammoth 速度更快且离线工作，Pandoc 转换更准确。',
+  converterTypeMammoth: 'Mammoth.js (JavaScript)',
+  converterTypePandoc: 'Pandoc (外部程序)',
+
+  // Pandoc path setting
+  pandocPathName: 'Pandoc 路径',
+  pandocPathDesc: 'Pandoc 可执行文件的路径。留空则使用系统 PATH 中的 pandoc 命令。',
+  pandocPathPlaceholder: '例如：C:\\Program Files\\Pandoc\\pandoc.exe',
+  autoDetectButton: '自动检测',
+  detectingButton: '检测中...',
+  pandocDetected: '已检测到 Pandoc：{path}',
+  pandocNotFound: '未找到 Pandoc。请安装 Pandoc 或提供正确的路径。',
+  pandocDetectionFailed: 'Pandoc 检测失败。请手动检查路径。',
+  pandocPathNotConfigured: '未配置 Pandoc 路径。请在设置中配置 Pandoc 路径。',
 
   // Commands
   convertSingleCommand: '转换单个Word文档',

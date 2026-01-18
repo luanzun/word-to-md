@@ -2,7 +2,40 @@
 
 一个简单而强大的 Obsidian 插件，用于将 Word 文档（.docx, .doc）转换为 Markdown 格式，保留适当的格式、图片和文档属性。
 
-中文文档 | **[English Documentation](README.md)**
+## 项目徽章
+
+![GitHub 发布](https://img.shields.io/github/v/release/luanzun/word-to-md)
+![许可证](https://img.shields.io/badge/license-MIT-blue)
+![平台](https://img.shields.io/badge/platform-Obsidian-blue)
+
+## 文档链接
+
+中文文档 | **English Documentation**
+- [中文文档 (README)](README.zh.md) | [English Documentation (README)](README.md)
+- [构建指南 (BUILD)](BUILD.zh.md) | [Build Guide (BUILD)](BUILD.md)
+
+## 功能清单
+
+- [x] 单文件转换
+- [x] 批量转换
+- [x] 上下文菜单集成
+- [x] 命令面板支持
+- [x] 标题转换（H1-H6）
+- [x] 文本格式（粗体、斜体、下划线、删除线）
+- [x] 有序和无序列表
+- [x] 表格转换
+- [x] 超链接保留
+- [x] 图片提取和存储
+- [x] YAML 前置元数据（文档属性）
+- [x] 自动标签生成
+- [x] 可自定义的图片文件夹命名
+- [x] 进度通知
+- [x] i18n 支持（英文、中文）
+- [x] Pandoc 支持
+- [ ] 高级格式选项（计划中）
+- [ ] 自定义 CSS 样式（计划中）
+
+
 
 ## 功能特性
 
@@ -28,6 +61,7 @@
 - **自动创建文件夹**：基于文档名称创建专用的图片文件夹
 - **可配置命名**：自定义图片文件夹和文件命名模式
 - **相对路径**：使用相对路径确保可移植性
+- **全面格式支持**：提取并保存 JPEG、PNG、GIF、BMP、TIFF、SVG、EMF 和 WMF 格式的图片
 
 ## 安装
 
@@ -65,19 +99,26 @@
 ### 语言
 - **语言**：选择插件的语言。选择"Auto"使用 Obsidian 的语言设置。
 
+### 转换引擎
+- **转换器类型**：选择使用的转换器：
+  - **Mammoth.js**：内置的 JavaScript 转换器，速度更快且离线工作
+  - **Pandoc**：外部转换器，格式更准确（需要安装 Pandoc）
+- **Pandoc 路径**：Pandoc 可执行文件的路径。点击"自动检测"自动查找，或留空以使用系统 PATH。
+
 ## 技术细节
 
 ### 转换引擎
-- **Mammoth.js**：用于将 Word 文档转换为 HTML。轻量级且可靠的库。
-- **Turndown**：用于将 HTML 转换为 Markdown，支持适当的格式和表格。
-- **Pandoc 支持**：（计划中）可选的 Pandoc 支持，用于更复杂的文档转换。
+- **Mammoth.js**：内置的 JavaScript 转换器，用于将 Word 文档转换为 HTML。轻量级且可靠。
+- **Turndown**：将 HTML 转换为 Markdown，支持适当的格式和表格。
+- **Pandoc**：可选的外部转换器，用于更准确的文档格式化。需要在系统上安装 Pandoc。使用带有唯一时间戳的临时目录来避免转换过程中的文件冲突。
 
 ### 文件支持
 - **Word 2007+**：.docx 文件完全支持
 - **旧版 Word 格式**：.doc 文件可能需要额外处理，功能可能受限
 
 ### 图片格式
-- 支持的格式：JPEG、PNG、GIF、BMP、TIFF、SVG
+- 支持的格式：JPEG、PNG、GIF、BMP、TIFF、SVG、EMF、WMF
+- **注意**：EMF 和 WMF 矢量图片格式在 Obsidian 中可能无法预览，但文件会被正确提取和保存。
 
 ## 故障排除
 
@@ -85,10 +126,14 @@
 1. **转换失败**：检查 Word 文档是否损坏或受密码保护
 2. **图片不显示**：确保图片文件夹已正确创建并使用相对路径
 3. **大文件**：对于非常大的文件，转换可能需要一些时间。请查看进度通知。
+4. **EMF/WMF 图片无法预览**：这些矢量图片格式可能在 Obsidian 的预览中无法显示，但文件会被正确保存。
 
 ### 错误信息
 - **"文件已存在"**：在设置中启用 "覆盖现有文件" 或重命名输出文件
-- **"不支持的图片类型"**：文档包含不支持的图片格式
+- **"不支持的图片类型"**：文档包含不支持的图片格式。插件支持 JPEG、PNG、GIF、BMP、TIFF、SVG、EMF 和 WMF 格式
+- **"未配置 Pandoc 路径"**：使用 Pandoc 转换器时，必须提供路径或确保 Pandoc 在系统 PATH 中
+- **"未找到 Pandoc"**：使用设置中的"自动检测"按钮，或从 https://pandoc.org/ 安装 Pandoc
+- **"ENOENT: 没有这样的文件或目录"**：临时目录创建失败。确保插件具有适当的文件系统权限
 
 ## 开发
 
@@ -113,6 +158,8 @@
 
 欢迎贡献！请随时提交问题、功能请求或拉取请求。
 
-## 许可证
-
 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+---
+
+## English Documentation (README.md)

@@ -39,6 +39,23 @@ export interface Translation {
   languageName: string;
   languageDesc: string;
 
+  // Converter type setting
+  converterTypeName: string;
+  converterTypeDesc: string;
+  converterTypeMammoth: string;
+  converterTypePandoc: string;
+
+  // Pandoc path setting
+  pandocPathName: string;
+  pandocPathDesc: string;
+  pandocPathPlaceholder: string;
+  autoDetectButton: string;
+  detectingButton: string;
+  pandocDetected: string;
+  pandocNotFound: string;
+  pandocDetectionFailed: string;
+  pandocPathNotConfigured: string;
+
   // Commands
   convertSingleCommand: string;
   convertFolderCommand: string;

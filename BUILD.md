@@ -86,6 +86,8 @@ npm run lint:fix
 1. **npm command not found**: Ensure Node.js is properly installed and added to your PATH
 2. **Build errors**: Check the console output for specific error messages, typically related to missing dependencies or TypeScript errors
 3. **Plugin not loading in Obsidian**: Verify that the `main.js` and `manifest.json` files are correctly placed in your Obsidian plugins directory
+4. **ESLint errors about undefined variables**: Recent fixes ensure proper temporary directory creation for Pandoc conversions
+5. **Image format errors**: The plugin now fully supports EMF and WMF vector image formats from Word documents
 
 ### Recommended IDEs
 

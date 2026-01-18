@@ -5,9 +5,6 @@ export const en: Translation = {
   pluginName: 'Word to Markdown',
   pluginDescription: 'Convert word documents to Markdown with proper formatting, images, and properties.',
 
-  // Settings page
-  // settingsTitle: 'Settings',
-
   // Output folder setting
   outputFolderName: 'Output folder name',
   outputFolderDesc: 'Folder where converted Markdown files will be saved. Leave empty to save in the same folder as the original file.',
@@ -32,7 +29,25 @@ export const en: Translation = {
 
   // Language setting
   languageName: 'Language',
-  languageDesc: 'Select the language for the plugin. Choose "auto" to use Obsidian default language setting.',
+  languageDesc: 'Select the language for the plugin. Choose "Auto" to use Obsidian\'s language setting.',
+
+  // Converter type setting
+  converterTypeName: 'Converter type',
+  converterTypeDesc: 'Choose which converter to use for Word documents. Mammoth is faster and works offline, while Pandoc provides more accurate conversion.',
+  converterTypeMammoth: 'Mammoth.js (JavaScript)',
+  converterTypePandoc: 'Pandoc (External)',
+
+  // Pandoc path setting
+  pandocPathName: 'Pandoc path',
+  pandocPathDesc: 'Path to the pandoc executable. Leave empty to use "pandoc" from system PATH.',
+  pandocPathPlaceholder: 'e.g., C:\\Program Files\\Pandoc\\pandoc.exe',
+  autoDetectButton: 'Auto-detect',
+  detectingButton: 'Detecting...',
+  pandocDetected: 'Pandoc detected at: {path}',
+  pandocNotFound: 'Pandoc not found. Please install Pandoc or provide the correct path.',
+  pandocDetectionFailed: 'Failed to detect Pandoc. Please check the path manually.',
+  pandocPathNotConfigured: 'Pandoc path not configured. Please configure Pandoc path in settings.',
+
   // Commands
   convertSingleCommand: 'Convert word document',
   convertFolderCommand: 'Convert all word documents in folder',

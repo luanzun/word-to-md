@@ -15,7 +15,7 @@ export default class WordToMdPlugin extends Plugin {
     this.i18n = new I18n(this.settings.language);
 
     // Set the language, passing the app instance for auto-detection
-    this.i18n.setLanguage(this.settings.language, this.app as unknown);
+    this.i18n.setLanguage(this.settings.language, this.app);
 
     this.converter = new WordConverter(this);
 
@@ -64,12 +64,10 @@ export default class WordToMdPlugin extends Plugin {
         }
       })
     );
-
-    console.debug('Word to MD plugin loaded');
   }
 
   onunload() {
-    console.debug('Word to MD plugin unloaded');
+    // console.debug('Word to MD plugin unloaded');
   }
 
   async loadSettings() {
