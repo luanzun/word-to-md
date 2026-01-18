@@ -385,8 +385,8 @@ export class WordConverter {
 
       // If no properties found, use defaults
       if (Object.keys(properties).length === 0) {
-        properties.title = 'Document Title';
-        properties.author = 'Unknown Author';
+        properties.title = 'Document title';
+        properties.author = 'Unknown author';
         properties.created = new Date().toISOString();
         properties.modified = new Date().toISOString();
       }
@@ -396,8 +396,8 @@ export class WordConverter {
       console.error('Error extracting document properties:', error);
       // Return default properties if extraction fails
       return {
-        title: 'Document Title',
-        author: 'Unknown Author',
+        title: 'Document title',
+        author: 'Unknown author',
         created: new Date().toISOString(),
         modified: new Date().toISOString()
       };
