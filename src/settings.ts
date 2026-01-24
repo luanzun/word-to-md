@@ -138,22 +138,16 @@ export class WordToMdSettingsTab extends PluginSettingTab {
 
     // Pandoc path setting (only show when pandoc is selected)
     if (this.plugin.settings.converterType === 'pandoc') {
-      // Variable to store reference to the text component
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let pandocTextComponent: any = null;
       const pandocPathSetting = new Setting(containerEl)
         .setName(i18n.t('pandocPathName'))
         .setDesc(i18n.t('pandocPathDesc'))
-        .addText((text) => {
-          pandocTextComponent = text;
-          return text
-            .setPlaceholder(i18n.t('pandocPathPlaceholder'))
-            .setValue(this.plugin.settings.pandocPath)
-            .onChange(async (value) => {
-              this.plugin.settings.pandocPath = value;
-              await this.plugin.saveSettings();
-            });
-        });
+        .addText((text) => text
+          .setPlaceholder(i18n.t('pandocPathPlaceholder'))
+          .setValue(this.plugin.settings.pandocPath)
+          .onChange(async (value) => {
+            this.plugin.settings.pandocPath = value;
+            await this.plugin.saveSettings();
+          }));
 
       // Add auto-detect button
       pandocPathSetting.addButton((button) => button
@@ -167,15 +161,10 @@ export class WordToMdSettingsTab extends PluginSettingTab {
             if (detectedPath) {
               this.plugin.settings.pandocPath = detectedPath;
               await this.plugin.saveSettings();
-              // Update the text input field
-              if (pandocTextComponent) {
-                pandocTextComponent.setValue(detectedPath);
-              } else {
-                // Fallback: directly set the input value
-                const inputEl = pandocPathSetting.controlEl.querySelector('input');
-                if (inputEl) {
-                  inputEl.value = detectedPath;
-                }
+              // Update the text input field directly
+              const inputEl = pandocPathSetting.controlEl.querySelector('input');
+              if (inputEl) {
+                inputEl.value = detectedPath;
               }
               new Notice(i18n.t('pandocDetected', { path: detectedPath }));
             } else {

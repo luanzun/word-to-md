@@ -1,3 +1,11 @@
+/*
+ * @Author: fusemsg fuyun365@gmail.com
+ * @Date: 2026-01-18 21:52:12
+ * @LastEditors: fusemsg fuyun365@gmail.com
+ * @LastEditTime: 2026-01-24 08:02:20
+ * @FilePath: \word-to-md\src\i18n\en.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 import { Translation } from './types';
 
 export const en: Translation = {
@@ -29,24 +37,24 @@ export const en: Translation = {
 
   // Language setting
   languageName: 'Language',
-  languageDesc: 'Select the language for the plugin. Choose "Auto" to use Obsidian\'s language setting.',
+  languageDesc: 'Select the language for the plugin. Choose "auto" to use obsidian\'s language setting.',
 
   // Converter type setting
   converterTypeName: 'Converter type',
-  converterTypeDesc: 'Choose which converter to use for Word documents. Mammoth is faster and works offline, while Pandoc provides more accurate conversion.',
+  converterTypeDesc: 'Choose which converter to use for Word documents. Mammoth is faster and works offline, while pandoc provides more accurate conversion.',
   converterTypeMammoth: 'Mammoth.js (JavaScript)',
-  converterTypePandoc: 'Pandoc (External)',
+  converterTypePandoc: 'Pandoc (external)',
 
   // Pandoc path setting
   pandocPathName: 'Pandoc path',
-  pandocPathDesc: 'Path to the pandoc executable. Leave empty to use "pandoc" from system PATH.',
+  pandocPathDesc: 'Path to the pandoc executable. Leave empty to use "pandoc" from system path.',
   pandocPathPlaceholder: 'e.g., C:\\Program Files\\Pandoc\\pandoc.exe',
   autoDetectButton: 'Auto-detect',
   detectingButton: 'Detecting...',
   pandocDetected: 'Pandoc detected at: {path}',
-  pandocNotFound: 'Pandoc not found. Please install Pandoc or provide the correct path.',
-  pandocDetectionFailed: 'Failed to detect Pandoc. Please check the path manually.',
-  pandocPathNotConfigured: 'Pandoc path not configured. Please configure Pandoc path in settings.',
+  pandocNotFound: 'Pandoc not found. Please install pandoc or provide the correct path.',
+  pandocDetectionFailed: 'Failed to detect pandoc. Please check the path manually.',
+  pandocPathNotConfigured: 'Pandoc path not configured. Please configure pandoc path in settings.',
 
   // Commands
   convertSingleCommand: 'Convert word document',
